@@ -1,0 +1,18 @@
+# Rust / Tauri
+src-tauri/target/
+target/
+src-tauri/gen/schemas/
+# Docker build cache (lokal)
+docker/.cache/
+docker/.build-image.log
+docker/*.log
+# Artefaktlar
+dist/
+# Sirlar — hech qachon repoga yozilmasin
+*.key
+*.key.pub
+.env
+.env.*
+# OS / editor
+.DS_Store
+*.swp

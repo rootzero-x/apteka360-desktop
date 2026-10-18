@@ -1,0 +1,23 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Lokal loader sahifasi (index.html) uchun ruxsatlar",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:allow-set-fullscreen",
+    "core:window:allow-is-fullscreen",
+    "core:window:allow-set-title",
+    "core:webview:allow-set-webview-zoom",
+    "shell:allow-open",
+    "process:allow-restart",
+    "allow-check-online",
+    "allow-get-client-info",
+    "allow-toggle-fullscreen",
+    "allow-zoom-step",
+    "allow-go-home",
+    "allow-reload-page"
+  ]
+}

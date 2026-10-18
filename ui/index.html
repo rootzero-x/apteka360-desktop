@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Apteka 360</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+         background: radial-gradient(1200px 600px at 50% -10%, #134e4a 0%, #0f172a 60%); color:#fff;
+         font-family: system-ui, "Segoe UI", Roboto, Arial, sans-serif; text-align:center; }
+  .card { max-width: 460px; padding: 40px 32px; }
+  .logo { width:84px; height:84px; border-radius:22px; margin:0 auto 18px;
+          background: linear-gradient(135deg,#14b8a6,#0e7490); display:flex; align-items:center; justify-content:center;
+          font-weight:800; font-size:26px; letter-spacing:-1px; box-shadow:0 12px 40px rgba(20,184,166,.35); }
+  h1 { font-size:24px; margin:0 0 6px; }
+  p  { color:#cbd5e1; font-size:15px; line-height:1.55; margin:8px 0 0; }
+  .spinner { width:34px; height:34px; border:3px solid rgba(255,255,255,.15); border-top-color:#14b8a6;
+             border-radius:50%; margin:22px auto 0; animation: spin .9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  button { margin-top:20px; background:#14b8a6; color:#fff; border:0; border-radius:10px; padding:12px 24px;
+           font-size:15px; cursor:pointer; }
+  button:hover { background:#0d9488; }
+  .hidden { display:none; }
+  .ver { margin-top:26px; font-size:12px; color:#64748b; }
+  .detail { font-size:12px; color:#64748b; margin-top:10px; word-break:break-all; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">A360</div>
+    <h1>Apteka 360</h1>
+
+    <div id="loading">
+      <p>Serverga ulanmoqda…</p>
+      <div class="spinner"></div>
+    </div>
+
+    <div id="offline" class="hidden">
+      <p><strong>Internet aloqasi yo‘q</strong></p>
+      <p>Apteka 360 serveriga ulanib bo‘lmadi. Tarmoq kabelini yoki Wi‑Fi ulanishini tekshiring va qayta urinib ko‘ring.</p>
+      <button id="retry">Qayta urinish</button>
+      <div id="countdown" class="detail"></div>
+      <div id="err" class="detail"></div>
+    </div>
+
+    <div class="ver">Apteka 360 Desktop <span id="ver"></span></div>
+  </div>
+
+<script>
+(function () {
+  var D = window.__APTEKA_DESKTOP__ || {};
+  var PANEL = D.panel || 'https://apteka.agrom24.uz';
+  document.getElementById('ver').textContent = D.version ? 'v' + D.version : '';
+  var loading = document.getElementById('loading'), offline = document.getElementById('offline');
+  var timer = null, left = 0;
+
+  function invoke(cmd, args) {
+    if (window.__TAURI__ && window.__TAURI__.core) return window.__TAURI__.core.invoke(cmd, args || {});
+    // Oddiy brauzerda ochilgan bo'lsa — navigator.onLine bilan cheklanamiz
+    return navigator.onLine ? Promise.resolve(true) : Promise.reject(new Error('offline'));
+  }
+  function go() { window.location.replace(PANEL); }
+  function showOffline(msg) {
+    loading.classList.add('hidden'); offline.classList.remove('hidden');
+    document.getElementById('err').textContent = msg ? 'Tafsilot: ' + msg : '';
+    left = 15; tick();
+    clearInterval(timer); timer = setInterval(tick, 1000);
+  }
+  function tick() {
+    document.getElementById('countdown').textContent = left > 0 ? ('Avtomatik qayta urinish: ' + left + ' s') : '';
+    if (left-- <= 0) { clearInterval(timer); attempt(); }
+  }
+  function attempt() {
+    clearInterval(timer);
+    offline.classList.add('hidden'); loading.classList.remove('hidden');
+    invoke('check_online').then(function (ok) { ok ? go() : showOffline('server javob bermadi'); })
+                           .catch(function (e) { showOffline(String(e && e.message || e)); });
+  }
+  document.getElementById('retry').onclick = attempt;
+  window.addEventListener('online', attempt);
+  attempt();
+})();
+</script>
+</body>
+</html>

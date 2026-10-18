@@ -1,0 +1,12 @@
+{
+  "bundle": { "createUpdaterArtifacts": true },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://apteka.agrom24.uz/desktop/latest.json"
+      ],
+      "pubkey": "PASTE_PUBLIC_KEY_HERE",
+      "windows": { "installMode": "passive" }
+    }
+  }
+}
