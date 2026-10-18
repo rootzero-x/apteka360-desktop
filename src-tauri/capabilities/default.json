@@ -11,7 +11,7 @@
     "core:window:allow-is-fullscreen",
     "core:window:allow-set-title",
     "core:webview:allow-set-webview-zoom",
-    "shell:allow-open",
+    "opener:allow-open-url",
     "process:allow-restart",
     "allow-check-online",
     "allow-get-client-info",

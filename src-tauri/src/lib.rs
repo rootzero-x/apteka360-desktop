@@ -4,14 +4,16 @@
 //! - ulanishni tekshiradi (`check_online`) — offline bo'lsa lokal o'zbekcha ekran ko'rsatiladi;
 //! - har bir sahifaga init-skript kiritadi: API so'rovlariga `X-Client: desktop/<versiya>` va
 //!   `X-Client-Device` sarlavhalarini qo'shadi, F11 / Ctrl+± tugmalarini ushlaydi, offline overlay;
-//! - menyu: qayta yuklash, zoom, to'liq ekran;
+//! - menyu, tizim tray ikonkasi, bitta nusxa, oyna holatini eslab qolish, avtostart;
 //! - `updater` feature yoqilganda avto-yangilanishni ishga tushiradi.
 
 use std::sync::Mutex;
 use std::time::Duration;
 
-use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
-use tauri::{AppHandle, Manager, State, Url, WebviewWindow};
+use tauri::menu::{CheckMenuItemBuilder, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri::{AppHandle, LogicalSize, Manager, State, Url, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
+use tauri_plugin_autostart::ManagerExt as _;
 
 /// Web panel manzili. Kompilyatsiya vaqtida `APTEKA_PANEL_URL` orqali o'zgartirish mumkin.
 pub const PANEL_URL: &str = match option_env!("APTEKA_PANEL_URL") {
@@ -19,9 +21,13 @@ pub const PANEL_URL: &str = match option_env!("APTEKA_PANEL_URL") {
     None => "https://apteka.agrom24.uz",
 };
 
+const WINDOW_LABEL: &str = "main";
 const ZOOM_STEPS: [f64; 9] = [0.67, 0.75, 0.8, 0.9, 1.0, 1.1, 1.25, 1.5, 1.75];
+const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36 Apteka360Desktop";
 
 struct ZoomState(Mutex<usize>);
+/// Oynani yopganda trayga yig'ish (true) yoki ilovadan chiqish (false).
+struct CloseToTray(Mutex<bool>);
 
 #[derive(serde::Serialize)]
 struct ClientInfo {
@@ -39,11 +45,7 @@ fn ascii_hostname() -> String {
         .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_' || *c == '.')
         .take(40)
         .collect();
-    if cleaned.is_empty() {
-        "DESKTOP".to_string()
-    } else {
-        cleaned
-    }
+    if cleaned.is_empty() { "DESKTOP".to_string() } else { cleaned }
 }
 
 fn client_info(app: &AppHandle) -> ClientInfo {
@@ -125,35 +127,39 @@ fn init_script(info: &ClientInfo) -> String {
         .replace("__APP_VERSION__", &info.version)
 }
 
+fn show_main(app: &AppHandle) {
+    if let Some(w) = app.get_webview_window(WINDOW_LABEL) {
+        let _ = w.show();
+        let _ = w.unminimize();
+        let _ = w.set_focus();
+    }
+}
+
 fn build_menu(app: &AppHandle) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> {
-    let reload = MenuItemBuilder::with_id("reload", "Qayta yuklash")
-        .accelerator("CmdOrCtrl+R")
+    let home = MenuItemBuilder::with_id("home", "Bosh sahifa").accelerator("Alt+Home").build(app)?;
+    let reload = MenuItemBuilder::with_id("reload", "Qayta yuklash").accelerator("CmdOrCtrl+R").build(app)?;
+    let autostart_on = app.autolaunch().is_enabled().unwrap_or(false);
+    let autostart = CheckMenuItemBuilder::with_id("autostart", "Windows bilan ishga tushirish")
+        .checked(autostart_on)
         .build(app)?;
-    let home = MenuItemBuilder::with_id("home", "Bosh sahifa")
-        .accelerator("Alt+Home")
+    let close_tray = CheckMenuItemBuilder::with_id("close_to_tray", "Yopganda trayga yig'ish")
+        .checked(true)
         .build(app)?;
-    let quit = MenuItemBuilder::with_id("quit", "Chiqish")
-        .accelerator("CmdOrCtrl+Q")
-        .build(app)?;
+    let quit = MenuItemBuilder::with_id("quit", "Chiqish").accelerator("CmdOrCtrl+Q").build(app)?;
     let file = SubmenuBuilder::new(app, "Fayl")
         .item(&home)
         .item(&reload)
         .separator()
+        .item(&autostart)
+        .item(&close_tray)
+        .separator()
         .item(&quit)
         .build()?;
 
-    let zoom_in = MenuItemBuilder::with_id("zoom_in", "Kattalashtirish")
-        .accelerator("CmdOrCtrl+=")
-        .build(app)?;
-    let zoom_out = MenuItemBuilder::with_id("zoom_out", "Kichraytirish")
-        .accelerator("CmdOrCtrl+-")
-        .build(app)?;
-    let zoom_reset = MenuItemBuilder::with_id("zoom_reset", "Asl o'lcham")
-        .accelerator("CmdOrCtrl+0")
-        .build(app)?;
-    let fullscreen = MenuItemBuilder::with_id("fullscreen", "To'liq ekran")
-        .accelerator("F11")
-        .build(app)?;
+    let zoom_in = MenuItemBuilder::with_id("zoom_in", "Kattalashtirish").accelerator("CmdOrCtrl+=").build(app)?;
+    let zoom_out = MenuItemBuilder::with_id("zoom_out", "Kichraytirish").accelerator("CmdOrCtrl+-").build(app)?;
+    let zoom_reset = MenuItemBuilder::with_id("zoom_reset", "Asl o'lcham").accelerator("CmdOrCtrl+0").build(app)?;
+    let fullscreen = MenuItemBuilder::with_id("fullscreen", "To'liq ekran").accelerator("F11").build(app)?;
     let view = SubmenuBuilder::new(app, "Ko'rinish")
         .item(&zoom_in)
         .item(&zoom_out)
@@ -163,26 +169,72 @@ fn build_menu(app: &AppHandle) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> {
         .build()?;
 
     let version = app.package_info().version.to_string();
-    let about = MenuItemBuilder::with_id("about", format!("Apteka 360 Desktop v{version}"))
-        .enabled(false)
-        .build(app)?;
-    let open_browser = MenuItemBuilder::with_id("open_browser", "Brauzerda ochish")
-        .build(app)?;
-    let help = SubmenuBuilder::new(app, "Yordam")
-        .item(&open_browser)
-        .separator()
-        .item(&about)
-        .build()?;
+    let about = MenuItemBuilder::with_id("about", format!("Apteka 360 Desktop v{version}")).enabled(false).build(app)?;
+    let open_browser = MenuItemBuilder::with_id("open_browser", "Brauzerda ochish").build(app)?;
+    let help = SubmenuBuilder::new(app, "Yordam").item(&open_browser).separator().item(&about).build()?;
 
     MenuBuilder::new(app).items(&[&file, &view, &help]).build()
 }
 
+fn build_tray(app: &AppHandle) -> tauri::Result<()> {
+    let show = MenuItemBuilder::with_id("tray_show", "Apteka 360 ni ochish").build(app)?;
+    let quit = MenuItemBuilder::with_id("quit", "Chiqish").build(app)?;
+    let menu = MenuBuilder::new(app).items(&[&show]).separator().items(&[&quit]).build()?;
+    let mut tray = TrayIconBuilder::with_id("main-tray")
+        .tooltip("Apteka 360")
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
+                show_main(tray.app_handle());
+            }
+        });
+    if let Some(icon) = app.default_window_icon() {
+        tray = tray.icon(icon.clone());
+    }
+    tray.build(app)?;
+    Ok(())
+}
+
+fn handle_menu(app: &AppHandle, id: &str) {
+    let Some(window) = app.get_webview_window(WINDOW_LABEL) else { return };
+    let zoom = app.state::<ZoomState>();
+    match id {
+        "reload" => { let _ = reload_page(window); }
+        "home" => { let _ = go_home(window); }
+        "quit" => app.exit(0),
+        "tray_show" => show_main(app),
+        "zoom_in" => { let _ = zoom_step(window, zoom, 1); }
+        "zoom_out" => { let _ = zoom_step(window, zoom, -1); }
+        "zoom_reset" => { let _ = zoom_step(window, zoom, 0); }
+        "fullscreen" => { let _ = toggle_fullscreen(window); }
+        "autostart" => {
+            let al = app.autolaunch();
+            let _ = if al.is_enabled().unwrap_or(false) { al.disable() } else { al.enable() };
+        }
+        "close_to_tray" => {
+            if let Ok(mut v) = app.state::<CloseToTray>().0.lock() { *v = !*v; }
+        }
+        "open_browser" => {
+            use tauri_plugin_opener::OpenerExt;
+            let _ = app.opener().open_url(PANEL_URL, None::<&str>);
+        }
+        _ => {}
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[allow(unused_mut)]
     let mut builder = tauri::Builder::default()
-        .plugin(tauri_plugin_shell::init())
+        // Bitta nusxa: ikkinchi marta ochilsa mavjud oyna ko'tariladi
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_main(app)))
+        .plugin(tauri_plugin_window_state::Builder::new().build())
+        .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, None))
+        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
         .manage(ZoomState(Mutex::new(4)))
+        .manage(CloseToTray(Mutex::new(true)))
         .invoke_handler(tauri::generate_handler![
             check_online,
             get_client_info,
@@ -204,32 +256,34 @@ pub fn run() {
             let handle = app.handle().clone();
             let info = client_info(&handle);
 
-            // Asosiy oyna tauri.conf.json dan yaratiladi; init-skriptni unga qo'shish uchun
-            // oynani qayta quramiz (conf'dagi oyna faqat shablon).
-            if let Some(w) = app.get_webview_window("main") {
-                w.close()?;
-            }
-            let mut wb = tauri::WebviewWindowBuilder::from_config(
-                &handle,
-                &app.config().app.windows[0],
-            )?
-            .initialization_script(init_script(&info));
-
-            // Dastlabki navigatsiya so'roviga ham X-Client sarlavhalari qo'shiladi
-            // (keyingi fetch/XHR so'rovlari init-skript orqali belgilanadi).
-            let mut headers = tauri::http::HeaderMap::new();
-            if let (Ok(c), Ok(d)) = (
-                info.client_header.parse(),
-                info.device_header.parse(),
-            ) {
-                headers.insert("X-Client", c);
-                headers.insert("X-Client-Device", d);
-            }
-            wb = wb.headers(headers)?;
-
-            let window = wb.build()?;
+            let window = WebviewWindowBuilder::new(app, WINDOW_LABEL, WebviewUrl::App("index.html".into()))
+                .title("Apteka 360")
+                .inner_size(1366.0, 860.0)
+                .min_inner_size(1280.0, 800.0)
+                .center()
+                .resizable(true)
+                .maximizable(true)
+                .decorations(true)
+                .user_agent(USER_AGENT)
+                .zoom_hotkeys_enabled(true)
+                .initialization_script(init_script(&info))
+                .build()?;
+            let _ = window.set_min_size(Some(LogicalSize::new(1280.0, 800.0)));
             window.set_menu(build_menu(&handle)?)?;
-            let _ = window.set_title("Apteka 360");
+
+            // Oynani yopish → trayga yig'ish (sozlamaga qarab)
+            let h = handle.clone();
+            window.on_window_event(move |event| {
+                if let WindowEvent::CloseRequested { api, .. } = event {
+                    let to_tray = h.state::<CloseToTray>().0.lock().map(|v| *v).unwrap_or(true);
+                    if to_tray {
+                        api.prevent_close();
+                        if let Some(w) = h.get_webview_window(WINDOW_LABEL) { let _ = w.hide(); }
+                    }
+                }
+            });
+
+            build_tray(&handle)?;
 
             #[cfg(feature = "updater")]
             {
@@ -238,24 +292,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .on_menu_event(|app, event| {
-            let Some(window) = app.get_webview_window("main") else { return };
-            let zoom = app.state::<ZoomState>();
-            match event.id().as_ref() {
-                "reload" => { let _ = reload_page(window); }
-                "home" => { let _ = go_home(window); }
-                "quit" => app.exit(0),
-                "zoom_in" => { let _ = zoom_step(window, zoom, 1); }
-                "zoom_out" => { let _ = zoom_step(window, zoom, -1); }
-                "zoom_reset" => { let _ = zoom_step(window, zoom, 0); }
-                "fullscreen" => { let _ = toggle_fullscreen(window); }
-                "open_browser" => {
-                    use tauri_plugin_shell::ShellExt;
-                    let _ = app.shell().open(PANEL_URL, None);
-                }
-                _ => {}
-            }
-        })
+        .on_menu_event(|app, event| handle_menu(app, event.id().as_ref()))
         .run(tauri::generate_context!())
         .expect("Apteka 360 ilovasini ishga tushirib bo'lmadi");
 }
@@ -281,9 +318,7 @@ mod updater {
             .kind(MessageDialogKind::Info)
             .buttons(MessageDialogButtons::OkCancelCustom("Yangilash".into(), "Keyinroq".into()))
             .blocking_show();
-        if !ok {
-            return;
-        }
+        if !ok { return; }
         if update.download_and_install(|_, _| {}, || {}).await.is_ok() {
             app.restart();
         }

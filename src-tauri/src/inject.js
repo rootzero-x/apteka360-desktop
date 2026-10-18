@@ -50,6 +50,8 @@
     var ctrl = e.ctrlKey || e.metaKey;
     if (e.key === 'F11') { e.preventDefault(); invoke('toggle_fullscreen'); }
     else if (e.key === 'F5') { e.preventDefault(); location.reload(); }
+    else if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); history.back(); }
+    else if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); history.forward(); }
     else if (ctrl && (e.key === '=' || e.key === '+')) { e.preventDefault(); invoke('zoom_step', { delta: 1 }); }
     else if (ctrl && e.key === '-') { e.preventDefault(); invoke('zoom_step', { delta: -1 }); }
     else if (ctrl && e.key === '0') { e.preventDefault(); invoke('zoom_step', { delta: 0 }); }
