@@ -8,8 +8,12 @@ Ilova o‘zida frontend kodini saqlamaydi: panel yangilanganda desktop ilovani q
 
 | Imkoniyat | Qayerda |
 |---|---|
-| Oyna «Apteka 360», ikonka, 1366×860 (minimal 1280×800), markazda | `src-tauri/tauri.conf.json` |
-| Menyu: Fayl (Bosh sahifa, Qayta yuklash `Ctrl+R`, Chiqish `Ctrl+Q`), Ko‘rinish (Kattalashtirish `Ctrl+=`, Kichraytirish `Ctrl+-`, Asl o‘lcham `Ctrl+0`, To‘liq ekran `F11`), Yordam | `src-tauri/src/lib.rs` → `build_menu` |
+| Oyna «Apteka 360», ikonka, 1366×860 (minimal 1280×800), markazda; oyna o‘lchami/joyi eslab qolinadi | `src-tauri/src/lib.rs` → `setup`, `tauri-plugin-window-state` |
+| Tizim tray ikonkasi («Apteka 360 ni ochish», «Chiqish»); oynani yopganda trayga yig‘iladi (Fayl → «Yopganda trayga yig‘ish» bilan o‘chiriladi) | `lib.rs` → `build_tray` |
+| Bitta nusxa: ikkinchi marta ochilsa mavjud oyna ko‘tariladi | `tauri-plugin-single-instance` |
+| Windows bilan avtomatik ishga tushish (Fayl menyusida belgi) | `tauri-plugin-autostart` |
+| O‘zbek/rus/ingliz tilidagi NSIS o‘rnatuvchi, WebView2 bootstrapper ichida | `tauri.conf.json → bundle.windows` |
+| Menyu: Fayl (Bosh sahifa `Alt+Home`, Qayta yuklash `Ctrl+R`, Chiqish `Ctrl+Q`), `Alt+←/→` orqaga/oldinga, Ko‘rinish (Kattalashtirish `Ctrl+=`, Kichraytirish `Ctrl+-`, Asl o‘lcham `Ctrl+0`, To‘liq ekran `F11`), Yordam | `src-tauri/src/lib.rs` → `build_menu` |
 | Offline bo‘lsa o‘zbekcha xato ekrani, «Qayta urinish» tugmasi, 15 s da avtomatik qayta urinish | `ui/index.html` (ishga tushishda), `src-tauri/src/inject.js` (panel ichida aloqa uzilsa overlay) |
 | API so‘rovlariga `X-Client: desktop/<versiya>` va `X-Client-Device: <kompyuter nomi> · Desktop ilova` | `src-tauri/src/inject.js` (fetch/XHR), `lib.rs` (dastlabki navigatsiya sarlavhalari) |
 | Avto-yangilanish uchun joy (`updater` feature) | `lib.rs` → `mod updater`, `src-tauri/tauri.updater.conf.json` |
@@ -24,11 +28,30 @@ so‘rovga ikkala sarlavhani qo‘shadi. API CORS allow-list’ida bu sarlavhala
 `access-control-allow-headers: ... X-Client, X-Client-Device ...`), shuning uchun brauzer ularni o‘tkazadi.
 
 **Cheklovlar:**
+- Tauri 2.12 da dastlabki (HTML) navigatsiya so‘roviga maxsus sarlavha qo‘shish API’si yo‘q; sarlavhalar faqat JS so‘rovlarida.
 - Sarlavhalar web panelning *JS orqali* yuboradigan so‘rovlariga qo‘shiladi. Agar panel `<img>`, `<video>`, HLS segmentlari
   yoki Service Worker orqali API ga murojaat qilsa, ularga sarlavha qo‘shilmaydi (brauzer imkon bermaydi).
 - Agar web panel fetch’ni sahifa yuklanishidan *oldin* o‘z nusxasiga saqlab olsa (odatda bunday emas), o‘rash ishlamaydi.
 - Panelning o‘zi (`window.__APTEKA_DESKTOP__` obyekti bor) desktop ichida ekanini aniqlab, sarlavhani o‘zi qo‘shishi ham mumkin —
   bu eng ishonchli yo‘l; init-skript mavjud sarlavhani qayta yozmaydi.
+
+## Skrinshotlar (Linux build, Xvfb)
+
+| Yuklanish | Login ekrani | Offline |
+|---|---|---|
+| ![](docs/screenshot-loader.png) | ![](docs/screenshot-login.png) | ![](docs/screenshot-offline.png) |
+
+## Tayyor artefaktlar (lokal build, 2026-10-18)
+
+Build Docker ichida qilingan (`docker/build.sh`), natijalar `dist/` da (`.gitignore` da — repoga kirmaydi):
+
+| Fayl | Hajm | Izoh |
+|---|---|---|
+| `dist/windows/Apteka 360_0.1.0_x64-setup.exe` | 2.2 MB | **Windows o‘rnatuvchi** (NSIS, x64), Linux’da `cargo-xwin` bilan cross-compile qilingan, imzolanmagan |
+| `dist/windows/apteka360-desktop.exe` | 7 MB | o‘rnatuvchisiz ilova (portable; WebView2 runtime kerak) |
+| `dist/linux/Apteka 360_0.1.0_amd64.deb` / `.rpm` / `.AppImage` | 3.3 / 3.3 / 104 MB | Linux |
+
+MSI faqat GitHub Actions (`windows-latest`) orqali chiqadi.
 
 ## Loyiha tuzilmasi
 
