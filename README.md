@@ -4,6 +4,37 @@ Apteka 360 dorixona tarmog‘i boshqaruv tizimining desktop qobig‘i. [Tauri 2]
 **https://apteka.agrom24.uz** web panelini tizim WebView’ida (Windows — WebView2, Linux — WebKitGTK) ochadi.
 Ilova o‘zida frontend kodini saqlamaydi: panel yangilanganda desktop ilovani qayta chiqarish shart emas.
 
+## Arxitektura: native qobiq (0.1.0)
+
+Ilova oddiy «web oynasi» emas — Windows 11 (Fluent Design) uslubidagi **native qobiq**:
+
+```
+┌ Window «Apteka 360» ────────────────────────────────────────────────┐
+│ ☰ A360 Apteka 360 │ ‹ › ⟳  Apteka 360 / Kassa          100% ⛶ ⋯    │ ← buyruqlar paneli
+│ Asosiy            │────────────────────────────────────────────────│
+│  Bosh sahifa      │                                                │
+│  Filiallar        │     child-webview «panel»                      │
+│  Xodimlar …       │     https://apteka.agrom24.uz (kontent)        │
+│ Moliya            │                                                │
+│  Kassa, FOM …     │                                                │
+│ Nazorat           │                                                │
+│  Kameralar …      │                                                │
+│  Sozlamalar       │                                                │
+│ ● Serverga ulangan  apteka.agrom24.uz      KASSA-PC-01  23:45  v0.1.0 │ ← holat paneli
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+- Bitta `Window` ichida ikkita child-webview (Tauri 2 multiwebview, `unstable` feature): `shell` — lokal `ui/index.html`
+  (yon panel, buyruqlar paneli, holat paneli, offline ekrani), `panel` — web panel, qobiq ko‘rsatgan maydonga joylashadi.
+- Yon panel panelning barcha bo‘limlariga olib boradi (`/dashboard`, `/cash`, `/cameras`, …); panelning o‘z yon paneli
+  **compact rejimda** yashiriladi (⋯ → «Panel navigatsiyasini yashirish» bilan qaytariladi). Login ekranida qobiq yashirinadi.
+- «⋯» — **native** Windows kontekst menyusi (Bosh sahifa, Qayta yuklash, Brauzerda ochish, Windows bilan ishga tushirish,
+  Yopganda trayga yig‘ish, To‘liq ekran, Dastur haqida (native dialog), Chiqish). Tizim tray ikonkasi, bitta nusxa, oyna holati.
+- Tugmalar: `F5`/`Ctrl+R` yangilash, `Alt+←/→` orqaga/oldinga, `Ctrl+±/0` masshtab, `F11` to‘liq ekran, `Ctrl+B` yon panel,
+  `Alt+Home` bosh sahifa, `Ctrl+Q` chiqish. Tizim mavzusi (och/to‘q) avtomatik.
+- **Linux cheklovi:** WebKitGTK’da Tauri child-webview’larni GtkBox’ga ketma-ket joylaydi (pozitsiya ishlamaydi), shuning uchun
+  Linux’da zaxira rejim: panel butun oynani egallaydi, qobiq faqat offline bo‘lganda ko‘rinadi. Windows (WebView2) da to‘liq qobiq.
+
 ## Imkoniyatlar
 
 | Imkoniyat | Qayerda |
@@ -38,11 +69,13 @@ so‘rovga ikkala sarlavhani qo‘shadi. API CORS allow-list’ida bu sarlavhala
 
 ## Skrinshotlar (Linux build, Xvfb)
 
-| Yuklanish | Login ekrani | Offline | Media ruxsat sinovi |
-|---|---|---|---|
-| ![](docs/screenshot-loader.png) | ![](docs/screenshot-login.png) | ![](docs/screenshot-offline.png) | ![](docs/screenshot-media-test.png) |
+| Native qobiq (offline holat, Linux Xvfb) | Login ekrani (Linux zaxira rejim) | Media ruxsat sinovi |
+|---|---|---|
+| ![](docs/screenshot-shell-offline.png) | ![](docs/screenshot-linux-online.png) | ![](docs/screenshot-media-test.png) |
 
-## Tayyor artefaktlar (lokal build, 2026-10-18)
+Windows’dagi to‘liq qobiq (yon panel + panel yonma-yon) skrinshoti Windows kompyuterda olinishi kerak — Linux’da child-webview joylashuvi ishlamaydi.
+
+## Tayyor artefaktlar (lokal build, 2026-10-19)
 
 Build Docker ichida qilingan (`docker/build.sh`), natijalar `dist/` da (`.gitignore` da — repoga kirmaydi):
 

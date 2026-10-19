@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-panel-forward"
+description = "Enables the panel_forward command without any pre-configured scope."
+commands.allow = ["panel_forward"]
+
+[[permission]]
+identifier = "deny-panel-forward"
+description = "Denies the panel_forward command without any pre-configured scope."
+commands.deny = ["panel_forward"]

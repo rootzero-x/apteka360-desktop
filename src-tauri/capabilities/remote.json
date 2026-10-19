@@ -1,24 +1,27 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "remote-panel",
-  "description": "https://apteka.agrom24.uz web paneliga beriladigan minimal ruxsatlar (to'liq ekran, zoom, qayta urinish)",
+  "description": "https://apteka.agrom24.uz paneliga (child-webview «panel») beriladigan minimal ruxsatlar",
   "windows": [
     "main"
   ],
+  "webviews": [
+    "panel"
+  ],
   "remote": {
     "urls": [
-      "https://apteka.agrom24.uz/*"
+      "https://apteka.agrom24.uz/*",
+      "https://*.agrom24.uz/*"
     ]
   },
   "permissions": [
     "core:event:default",
-    "core:window:allow-set-fullscreen",
-    "core:window:allow-is-fullscreen",
-    "core:webview:allow-set-webview-zoom",
     "allow-toggle-fullscreen",
     "allow-zoom-step",
-    "allow-go-home",
-    "allow-reload-page",
+    "allow-panel-reload",
+    "allow-panel-back",
+    "allow-panel-forward",
+    "allow-report-network",
     "allow-get-client-info"
   ]
 }

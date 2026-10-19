@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-panel-eval-compact"
+description = "Enables the panel_eval_compact command without any pre-configured scope."
+commands.allow = ["panel_eval_compact"]
+
+[[permission]]
+identifier = "deny-panel-eval-compact"
+description = "Denies the panel_eval_compact command without any pre-configured scope."
+commands.deny = ["panel_eval_compact"]

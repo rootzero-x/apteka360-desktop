@@ -5,82 +5,311 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Apteka 360</title>
 <style>
-  :root { color-scheme: dark; }
-  * { box-sizing: border-box; }
-  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
-         background: radial-gradient(1200px 600px at 50% -10%, #134e4a 0%, #0f172a 60%); color:#fff;
-         font-family: system-ui, "Segoe UI", Roboto, Arial, sans-serif; text-align:center; }
-  .card { max-width: 460px; padding: 40px 32px; }
-  .logo { width:84px; height:84px; border-radius:22px; margin:0 auto 18px;
-          background: linear-gradient(135deg,#14b8a6,#0e7490); display:flex; align-items:center; justify-content:center;
-          font-weight:800; font-size:26px; letter-spacing:-1px; box-shadow:0 12px 40px rgba(20,184,166,.35); }
-  h1 { font-size:24px; margin:0 0 6px; }
-  p  { color:#cbd5e1; font-size:15px; line-height:1.55; margin:8px 0 0; }
-  .spinner { width:34px; height:34px; border:3px solid rgba(255,255,255,.15); border-top-color:#14b8a6;
-             border-radius:50%; margin:22px auto 0; animation: spin .9s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  button { margin-top:20px; background:#14b8a6; color:#fff; border:0; border-radius:10px; padding:12px 24px;
-           font-size:15px; cursor:pointer; }
-  button:hover { background:#0d9488; }
-  .hidden { display:none; }
-  .ver { margin-top:26px; font-size:12px; color:#64748b; }
-  .detail { font-size:12px; color:#64748b; margin-top:10px; word-break:break-all; }
+  /* ---- Fluent Design (Windows 11) token'lari ---- */
+  :root {
+    --font: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, Roboto, "Noto Sans", Arial, sans-serif;
+    --accent: #0f7b6c; --accent-hover: #0c6a5d; --accent-soft: rgba(15,123,108,.12);
+    --bg: #f3f3f3; --layer: #ffffff; --layer-alt: #fbfbfb; --stroke: rgba(0,0,0,.0578); --stroke-strong: rgba(0,0,0,.16);
+    --text: #1b1b1b; --text-2: rgba(0,0,0,.61); --text-3: rgba(0,0,0,.45);
+    --hover: rgba(0,0,0,.0373); --pressed: rgba(0,0,0,.0241); --selected: rgba(0,0,0,.0605);
+    --nav-w: 268px; --nav-compact: 48px; --cmd-h: 44px; --status-h: 24px; --radius: 6px;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #202020; --layer: #272727; --layer-alt: #2b2b2b; --stroke: rgba(255,255,255,.0837); --stroke-strong: rgba(255,255,255,.2);
+      --text: #ffffff; --text-2: rgba(255,255,255,.786); --text-3: rgba(255,255,255,.55);
+      --hover: rgba(255,255,255,.0605); --pressed: rgba(255,255,255,.0419); --selected: rgba(255,255,255,.0837);
+      --accent: #3fc6b1; --accent-hover: #5fd3c1; --accent-soft: rgba(63,198,177,.16);
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+  html, body { height: 100%; margin: 0; overflow: hidden; }
+  body { font: 14px/20px var(--font); color: var(--text); background: var(--bg); display: grid;
+         grid-template-columns: var(--nav-w) minmax(0,1fr); grid-template-rows: var(--cmd-h) minmax(0,1fr) var(--status-h);
+         grid-template-areas: "nav cmd" "nav content" "status status"; transition: grid-template-columns .15s ease; }
+  body.nav-compact { grid-template-columns: var(--nav-compact) minmax(0,1fr); }
+  body.bare { grid-template-columns: 0 minmax(0,1fr); grid-template-rows: 0 minmax(0,1fr) 0; }
+  body.bare nav, body.bare #cmd, body.bare #status { display: none; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: default; }
+  svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+  /* ---- NavigationView ---- */
+  nav { grid-area: nav; display: flex; flex-direction: column; padding: 6px 4px 4px; overflow: hidden; background: var(--bg); }
+  .nav-top { display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 0 0 2px; margin-bottom: 6px; }
+  .burger { width: 40px; height: 36px; border-radius: var(--radius); display: grid; place-items: center; }
+  .burger:hover, .nav-item:hover, .cmd button:hover, .menu button:hover { background: var(--hover); }
+  .burger:active, .nav-item:active, .cmd button:active { background: var(--pressed); }
+  .brand { display: flex; align-items: center; gap: 10px; overflow: hidden; white-space: nowrap; font-weight: 600; font-size: 14px; }
+  .brand .logo { width: 28px; height: 28px; border-radius: 7px; background: linear-gradient(135deg,#14b8a6,#0e7490); color: #fff; font: 700 11px/28px var(--font); text-align: center; flex: none; letter-spacing: -.3px; }
+  .nav-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; }
+  .nav-group { margin: 6px 0 2px; padding: 0 12px; font-size: 12px; color: var(--text-3); white-space: nowrap; overflow: hidden; height: 20px; }
+  .nav-item { display: flex; align-items: center; gap: 14px; height: 36px; margin: 2px 0; padding: 0 10px 0 12px; border-radius: var(--radius);
+              width: 100%; text-align: left; white-space: nowrap; overflow: hidden; position: relative; color: var(--text); }
+  .nav-item.active { background: var(--selected); }
+  .nav-item.active::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 2px; background: var(--accent); }
+  .nav-item .lbl { overflow: hidden; text-overflow: ellipsis; }
+  body.nav-compact .brand, body.nav-compact .nav-group, body.nav-compact .nav-item .lbl { display: none; }
+  body.nav-compact .nav-item { padding: 0; justify-content: center; gap: 0; }
+  .nav-footer { border-top: 1px solid var(--stroke); padding-top: 4px; margin-top: 4px; }
+
+  /* ---- Command bar ---- */
+  #cmd { grid-area: cmd; display: flex; align-items: center; gap: 2px; padding: 0 8px 0 4px; background: var(--bg); position: relative; }
+  .cmd button { width: 36px; height: 36px; border-radius: var(--radius); display: grid; place-items: center; color: var(--text); }
+  .cmd button:disabled { color: var(--text-3); background: none; }
+  .crumb { display: flex; align-items: center; gap: 8px; margin-left: 8px; font-size: 14px; white-space: nowrap; overflow: hidden; }
+  .crumb .sep { color: var(--text-3); }
+  .crumb b { font-weight: 600; }
+  .spacer { flex: 1; }
+  .pill { font-size: 12px; color: var(--text-2); padding: 0 8px; height: 28px; line-height: 28px; border-radius: 14px; }
+  .pill:hover { background: var(--hover); }
+  #progress { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; overflow: hidden; display: none; }
+  #progress::after { content: ""; position: absolute; inset: 0; width: 40%; background: var(--accent); border-radius: 2px; animation: slide 1.1s ease-in-out infinite; }
+  @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(260%); } }
+  body.loading #progress { display: block; }
+
+  /* ---- Content (panel shu yerda) ---- */
+  #content { grid-area: content; position: relative; background: var(--layer); border-top-left-radius: 8px; border: 1px solid var(--stroke); border-right: 0; border-bottom: 0; overflow: hidden; }
+  body.bare #content { border-radius: 0; border: 0; }
+  .card { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; text-align: center; background: var(--layer); }
+  .card.show { display: flex; }
+  .card .inner { max-width: 440px; padding: 32px; }
+  .card h1 { font-size: 20px; font-weight: 600; margin: 14px 0 6px; }
+  .card p { color: var(--text-2); margin: 6px 0 0; }
+  .card .ico { width: 72px; height: 72px; border-radius: 18px; margin: 0 auto; background: linear-gradient(135deg,#14b8a6,#0e7490); color: #fff; display: grid; place-items: center; font: 700 20px var(--font); box-shadow: 0 10px 30px rgba(20,184,166,.3); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 20px; margin-top: 18px; border-radius: var(--radius);
+         background: var(--accent); color: #fff; font-weight: 600; border: 1px solid rgba(0,0,0,.1); }
+  .btn:hover { background: var(--accent-hover); }
+  .small { font-size: 12px; color: var(--text-3); margin-top: 12px; }
+  .spin { width: 28px; height: 28px; border: 3px solid var(--stroke-strong); border-top-color: var(--accent); border-radius: 50%; margin: 18px auto 0; animation: rot .9s linear infinite; }
+  @keyframes rot { to { transform: rotate(360deg); } }
+
+  /* ---- Status bar ---- */
+  #status { grid-area: status; display: flex; align-items: center; gap: 18px; padding: 0 12px; font-size: 12px; color: var(--text-2); background: var(--bg); border-top: 1px solid var(--stroke); white-space: nowrap; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #16a34a; margin-right: 6px; vertical-align: 0; }
+  .dot.off { background: #dc2626; }
+  #status .right { margin-left: auto; display: flex; gap: 18px; }
+
+  /* ---- Flyout menu ---- */
+  .menu { position: absolute; top: 42px; right: 8px; min-width: 260px; background: var(--layer); border: 1px solid var(--stroke-strong); border-radius: 8px;
+          box-shadow: 0 8px 16px rgba(0,0,0,.14); padding: 4px; display: none; z-index: 10; }
+  .menu.open { display: block; }
+  .menu button { display: flex; align-items: center; gap: 12px; width: 100%; height: 34px; padding: 0 10px; border-radius: 4px; text-align: left; }
+  .menu .check { width: 16px; text-align: center; color: var(--accent); font-weight: 700; }
+  .menu hr { border: 0; border-top: 1px solid var(--stroke); margin: 4px 0; }
+  .menu .k { margin-left: auto; color: var(--text-3); font-size: 12px; }
 </style>
 </head>
-<body>
-  <div class="card">
-    <div class="logo">A360</div>
-    <h1>Apteka 360</h1>
+<body class="loading">
 
-    <div id="loading">
-      <p>Serverga ulanmoqda…</p>
-      <div class="spinner"></div>
-    </div>
-
-    <div id="offline" class="hidden">
-      <p><strong>Internet aloqasi yo‘q</strong></p>
-      <p>Apteka 360 serveriga ulanib bo‘lmadi. Tarmoq kabelini yoki Wi‑Fi ulanishini tekshiring va qayta urinib ko‘ring.</p>
-      <button id="retry">Qayta urinish</button>
-      <div id="countdown" class="detail"></div>
-      <div id="err" class="detail"></div>
-    </div>
-
-    <div class="ver">Apteka 360 Desktop <span id="ver"></span></div>
+<nav>
+  <div class="nav-top">
+    <button class="burger" id="burger" title="Navigatsiya (Ctrl+B)"><svg viewBox="0 0 20 20"><path d="M3 5h14M3 10h14M3 15h14"/></svg></button>
+    <div class="brand"><span class="logo">A360</span><span>Apteka 360</span></div>
   </div>
+  <div class="nav-scroll" id="navlist"></div>
+  <div class="nav-footer" id="navfoot"></div>
+</nav>
+
+<div id="cmd" class="cmd">
+  <button id="back" title="Orqaga (Alt+←)"><svg viewBox="0 0 20 20"><path d="M12 4l-6 6 6 6"/></svg></button>
+  <button id="fwd" title="Oldinga (Alt+→)"><svg viewBox="0 0 20 20"><path d="M8 4l6 6-6 6"/></svg></button>
+  <button id="reload" title="Yangilash (F5)"><svg viewBox="0 0 20 20"><path d="M16 10a6 6 0 1 1-1.8-4.3M16 3v3.5h-3.5"/></svg></button>
+  <div class="crumb"><span id="crumb-group">Apteka 360</span><span class="sep">/</span><b id="crumb-page">Bosh sahifa</b></div>
+  <div class="spacer"></div>
+  <button class="pill" id="zoom" title="Masshtab (Ctrl+0 — asl)">100%</button>
+  <button id="fs" title="To‘liq ekran (F11)"><svg viewBox="0 0 20 20"><path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4"/></svg></button>
+  <button id="more" title="Boshqa"><svg viewBox="0 0 20 20"><circle cx="4" cy="10" r="1.2" fill="currentColor"/><circle cx="10" cy="10" r="1.2" fill="currentColor"/><circle cx="16" cy="10" r="1.2" fill="currentColor"/></svg></button>
+  <div id="progress"></div>
+</div>
+
+<div id="content">
+  <div class="card show" id="card-loading"><div class="inner"><div class="ico">A360</div><h1>Apteka 360</h1><p>Serverga ulanmoqda…</p><div class="spin"></div></div></div>
+  <div class="card" id="card-offline"><div class="inner"><div class="ico">A360</div><h1>Internet aloqasi yo‘q</h1>
+    <p>Apteka 360 serveriga ulanib bo‘lmadi. Tarmoq kabelini yoki Wi‑Fi ulanishini tekshiring va qayta urinib ko‘ring.</p>
+    <button class="btn" id="retry">Qayta urinish</button><div class="small" id="countdown"></div><div class="small" id="err"></div></div></div>
+</div>
+
+<div id="status">
+  <span><span class="dot" id="dot"></span><span id="st-conn">Ulanmoqda…</span></span>
+  <span id="st-server">apteka.agrom24.uz</span>
+  <span class="right"><span id="st-host"></span><span id="st-clock"></span><span id="st-ver"></span></span>
+</div>
 
 <script>
 (function () {
+  var T = window.__TAURI__, core = T && T.core, ev = T && T.event;
+  var invoke = function (c, a) { return core ? core.invoke(c, a || {}) : Promise.reject(new Error('tauri yo‘q')); };
   var D = window.__APTEKA_DESKTOP__ || {};
   var PANEL = D.panel || 'https://apteka.agrom24.uz';
-  document.getElementById('ver').textContent = D.version ? 'v' + D.version : '';
-  var loading = document.getElementById('loading'), offline = document.getElementById('offline');
-  var timer = null, left = 0;
+  var $ = function (id) { return document.getElementById(id); };
 
-  function invoke(cmd, args) {
-    if (window.__TAURI__ && window.__TAURI__.core) return window.__TAURI__.core.invoke(cmd, args || {});
-    // Oddiy brauzerda ochilgan bo'lsa — navigator.onLine bilan cheklanamiz
-    return navigator.onLine ? Promise.resolve(true) : Promise.reject(new Error('offline'));
+  // ---- Navigatsiya ro'yxati (panel marshrutlari) ----
+  var I = {
+    home: '<path d="M3 9.5 10 3l7 6.5V17h-4.5v-5h-5v5H3z"/>', branch: '<path d="M3 17h14M4 17V7l6-4 6 4v10M8 17v-5h4v5"/>',
+    people: '<circle cx="7.5" cy="7" r="2.5"/><circle cx="14" cy="8" r="2"/><path d="M2.5 16c0-3 2.2-5 5-5s5 2 5 5M12 15c.3-2 1.5-3.5 3.5-3.5 1.3 0 2.2.5 2.5 1.3"/>',
+    clock: '<circle cx="10" cy="10" r="7"/><path d="M10 6v4l2.5 2"/>', cal: '<rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2.5v3M13 2.5v3"/>',
+    cash: '<rect x="2.5" y="5" width="15" height="10" rx="2"/><circle cx="10" cy="10" r="2.2"/><path d="M5.5 10h.01M14.5 10h.01"/>',
+    chart: '<path d="M3 17h14M5 14V9M9 14V5M13 14v-3M17 14v-7"/>', wallet: '<path d="M3 6.5A1.5 1.5 0 0 1 4.5 5H15v2.5M3 6.5V15a2 2 0 0 0 2 2h12v-7H5a2 2 0 0 1-2-2z"/><circle cx="14" cy="13.5" r="1"/>',
+    pay: '<path d="M4 15 10 4l6 11M6.5 11.5h7"/>', pl: '<path d="M3 15l4-5 3 3 4-6 3 3"/><path d="M3 17h14"/>', tax: '<path d="M4 4h12v13l-3-2-3 2-3-2-3 2z"/><path d="M7 8h6M7 11h4"/>',
+    flow: '<path d="M3 6h9a3 3 0 0 1 0 6H8a3 3 0 0 0 0 6h9M14 3l3 3-3 3M6 15l-3 3 3 3"/>', forecast: '<path d="M3 15c2-4 4-6 7-6s5 3 7 1"/><path d="M3 17h14M14 7l3-1-1 3"/>',
+    cam: '<rect x="2.5" y="6" width="11" height="9" rx="2"/><path d="M13.5 9l4-2v7l-4-2"/>', live: '<circle cx="10" cy="10" r="2.5"/><path d="M5 5a7 7 0 0 0 0 10M15 5a7 7 0 0 1 0 10M7 7a4 4 0 0 0 0 6M13 7a4 4 0 0 1 0 6"/>',
+    wall: '<rect x="3" y="3" width="6" height="6" rx="1"/><rect x="11" y="3" width="6" height="6" rx="1"/><rect x="3" y="11" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/>',
+    ai: '<path d="M10 3l1.6 4.4L16 9l-4.4 1.6L10 15l-1.6-4.4L4 9l4.4-1.6z"/><path d="M16 14l.6 1.4L18 16l-1.4.6L16 18l-.6-1.4L14 16l1.4-.6z"/>',
+    check: '<circle cx="10" cy="10" r="7"/><path d="M6.5 10.5l2.5 2.5 4.5-5"/>', audit: '<path d="M5 3h7l3 3v11H5z"/><path d="M12 3v3h3M8 10h4M8 13h4"/>',
+    expire: '<path d="M10 3v3M6 4l1 2M14 4l-1 2"/><circle cx="10" cy="12" r="5"/><path d="M10 10v2l1.5 1"/>', truck: '<path d="M2.5 5h9v8h-9zM11.5 8h3.5l2.5 3v2h-6z"/><circle cx="6" cy="14" r="1.5"/><circle cx="14" cy="14" r="1.5"/>',
+    doctor: '<circle cx="10" cy="6" r="3"/><path d="M4 17c0-3 2.7-5 6-5s6 2 6 5M10 12v5M8.5 15h3"/>', report: '<path d="M4 3h9l3 3v11H4z"/><path d="M7 9h6M7 12h6M7 15h4"/>',
+    bell: '<path d="M5 14h10l-1.5-2V8.5a3.5 3.5 0 0 0-7 0V12z"/><path d="M8.5 16.5a1.5 1.5 0 0 0 3 0"/>', gear: '<circle cx="10" cy="10" r="2.5"/><path d="M10 3v2M10 15v2M3 10h2M15 10h2M5 5l1.4 1.4M13.6 13.6 15 15M5 15l1.4-1.4M13.6 6.4 15 5"/>',
+    users: '<circle cx="10" cy="7" r="3"/><path d="M4 17c0-3 2.7-5 6-5s6 2 6 5"/>', key: '<circle cx="7" cy="12" r="3.5"/><path d="M9.5 9.5 17 2M14 5l2 2M12 7l2 2"/>',
+    health: '<path d="M3 10h4l2-4 2 8 2-4h4"/>', module: '<rect x="3" y="3" width="6" height="6" rx="1"/><rect x="11" y="3" width="6" height="6" rx="1"/><rect x="3" y="11" width="6" height="6" rx="1"/><path d="M14 11v6M11 14h6"/>'
+  };
+  var NAV = [
+    { group: 'Asosiy' },
+    { path: '/dashboard', label: 'Bosh sahifa', icon: 'home', alias: ['/'] },
+    { path: '/branches', label: 'Filiallar', icon: 'branch' },
+    { path: '/employees', label: 'Xodimlar', icon: 'people' },
+    { path: '/attendance', label: 'Davomat', icon: 'clock' },
+    { path: '/schedule', label: 'Ish jadvali', icon: 'cal' },
+    { group: 'Moliya' },
+    { path: '/cash', label: 'Kassa', icon: 'cash' },
+    { path: '/fom', label: 'FOM hisobot', icon: 'chart' },
+    { path: '/expenses', label: 'Xarajatlar', icon: 'wallet' },
+    { path: '/tolovlar', label: 'To‘lovlar', icon: 'pay' },
+    { path: '/payroll', label: 'Oylik maosh', icon: 'users' },
+    { path: '/pnl', label: 'Foyda va zarar', icon: 'pl' },
+    { path: '/cashflow', label: 'Pul oqimi', icon: 'flow' },
+    { path: '/soliq', label: 'Soliq', icon: 'tax' },
+    { path: '/forecast', label: 'Prognoz', icon: 'forecast' },
+    { group: 'Nazorat' },
+    { path: '/cameras', label: 'Kameralar', icon: 'cam' },
+    { path: '/live', label: 'Jonli ko‘rish', icon: 'live' },
+    { path: '/videowall', label: 'Video devor', icon: 'wall' },
+    { path: '/ai', label: 'AI hodisalar', icon: 'ai' },
+    { path: '/approvals', label: 'Tasdiqlashlar', icon: 'check' },
+    { path: '/audit', label: 'Audit jurnali', icon: 'audit' },
+    { path: '/sroklar', label: 'Muddatlar', icon: 'expire' },
+    { group: 'Ma‘lumotnoma' },
+    { path: '/suppliers', label: 'Ta‘minotchilar', icon: 'truck' },
+    { path: '/doctors', label: 'Shifokorlar', icon: 'doctor' },
+    { path: '/reports', label: 'Hisobotlar', icon: 'report' },
+    { path: '/analytics', label: 'Analitika', icon: 'chart' },
+    { path: '/health', label: 'Tizim holati', icon: 'health' }
+  ];
+  var FOOT = [
+    { path: '/notifications', label: 'Bildirishnomalar', icon: 'bell' },
+    { path: '/users', label: 'Foydalanuvchilar', icon: 'users' },
+    { path: '/roles', label: 'Rollar', icon: 'key' },
+    { path: '/modules', label: 'Modullar', icon: 'module' },
+    { path: '/settings', label: 'Sozlamalar', icon: 'gear' }
+  ];
+  var ALL = [];
+  function renderNav(list, host) {
+    var g = 'Apteka 360';
+    list.forEach(function (it) {
+      if (it.group) { g = it.group; var d = document.createElement('div'); d.className = 'nav-group'; d.textContent = it.group; host.appendChild(d); return; }
+      it.group_label = g; ALL.push(it);
+      var b = document.createElement('button'); b.className = 'nav-item'; b.title = it.label; b.dataset.path = it.path;
+      b.innerHTML = '<svg viewBox="0 0 20 20">' + (I[it.icon] || I.home) + '</svg><span class="lbl">' + it.label + '</span>';
+      b.onclick = function () { go(it.path); };
+      it.el = b; host.appendChild(b);
+    });
   }
-  function go() { window.location.replace(PANEL); }
-  function showOffline(msg) {
-    loading.classList.add('hidden'); offline.classList.remove('hidden');
-    document.getElementById('err').textContent = msg ? 'Tafsilot: ' + msg : '';
-    left = 15; tick();
-    clearInterval(timer); timer = setInterval(tick, 1000);
+  renderNav(NAV, $('navlist')); FOOT.forEach(function (f) { f.group_label = 'Tizim'; }); renderNav(FOOT, $('navfoot'));
+
+  function go(path) { invoke('panel_navigate', { path: path }); }
+  function setActive(url) {
+    var p = '/'; try { p = new URL(url).pathname; } catch (e) {}
+    var found = null;
+    ALL.forEach(function (it) { it.el.classList.remove('active'); });
+    ALL.forEach(function (it) { if (p === it.path || p.indexOf(it.path + '/') === 0 || (it.alias || []).indexOf(p) >= 0) { if (!found || it.path.length > found.path.length) found = it; } });
+    if (found) { found.el.classList.add('active'); $('crumb-group').textContent = found.group_label; $('crumb-page').textContent = found.label; }
+    else { $('crumb-group').textContent = 'Apteka 360'; $('crumb-page').textContent = p === '/login' ? 'Tizimga kirish' : p; }
+    document.body.classList.toggle('bare', online === true && (p === '/login' || p.indexOf('/login/') === 0));
+    layout();
   }
-  function tick() {
-    document.getElementById('countdown').textContent = left > 0 ? ('Avtomatik qayta urinish: ' + left + ' s') : '';
-    if (left-- <= 0) { clearInterval(timer); attempt(); }
+
+  // ---- Panel joylashuvi: #content maydoni → Rust ----
+  var panelVisible = null, online = null;
+  function layout() {
+    var r = $('content').getBoundingClientRect();
+    invoke('set_panel_bounds', { x: r.left, y: r.top, width: r.width, height: r.height });
   }
-  function attempt() {
-    clearInterval(timer);
-    offline.classList.add('hidden'); loading.classList.remove('hidden');
-    invoke('check_online').then(function (ok) { ok ? go() : showOffline('server javob bermadi'); })
-                           .catch(function (e) { showOffline(String(e && e.message || e)); });
+  new ResizeObserver(layout).observe($('content'));
+  window.addEventListener('resize', layout);
+  function showPanel(v) {
+    if (panelVisible === v) return; panelVisible = v;
+    invoke('set_panel_visible', { visible: v }); if (v) layout();
   }
-  document.getElementById('retry').onclick = attempt;
-  window.addEventListener('online', attempt);
-  attempt();
+
+  // ---- Ulanish / offline ----
+  var timer = null, left = 0;
+  function card(id) { ['card-loading', 'card-offline'].forEach(function (c) { $(c).classList.toggle('show', c === id); }); }
+  function setConn(ok, msg) {
+    online = ok; $('dot').classList.toggle('off', !ok); $('st-conn').textContent = ok ? 'Serverga ulangan' : 'Aloqa yo‘q';
+    if (ok) { card(null); showPanel(true); document.body.classList.remove('nav-compact-forced'); }
+    else { document.body.classList.remove('bare'); showPanel(false); card('card-offline'); $('err').textContent = msg ? 'Tafsilot: ' + msg : ''; left = 15; tick(); clearInterval(timer); timer = setInterval(tick, 1000); }
+  }
+  function tick() { $('countdown').textContent = left > 0 ? 'Avtomatik qayta urinish: ' + left + ' s' : ''; if (left-- <= 0) { clearInterval(timer); attempt(); } }
+  function attempt(reload) {
+    clearInterval(timer); if (online !== true) { card('card-loading'); $('st-conn').textContent = 'Ulanmoqda…'; }
+    invoke('check_online').then(function (ok) {
+      if (ok) { if (online !== true || reload) invoke('panel_reload'); setConn(true); }
+      else setConn(false, 'server javob bermadi');
+    }).catch(function (e) { setConn(false, String(e && e.message || e)); });
+  }
+  $('retry').onclick = function () { attempt(true); };
+  window.addEventListener('online', function () { attempt(true); });
+  window.addEventListener('offline', function () { setConn(false, 'tarmoq uzildi'); });
+
+  // ---- Buyruqlar paneli ----
+  $('back').onclick = function () { invoke('panel_back'); };
+  $('fwd').onclick = function () { invoke('panel_forward'); };
+  $('reload').onclick = function () { attempt(true); };
+  $('fs').onclick = function () { invoke('toggle_fullscreen'); };
+  $('zoom').onclick = function () { invoke('zoom_step', { delta: 0 }); };
+  $('burger').onclick = function () { document.body.classList.toggle('nav-compact'); try { localStorage.setItem('nav-compact', document.body.classList.contains('nav-compact') ? '1' : '0'); } catch (e) {} };
+  try { if (localStorage.getItem('nav-compact') === '1') document.body.classList.add('nav-compact'); } catch (e) {}
+  window.addEventListener('keydown', function (e) {
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) { e.preventDefault(); $('burger').click(); }
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'q' || e.key === 'Q')) { e.preventDefault(); invoke('quit_app'); }
+    if (e.altKey && e.key === 'Home') { e.preventDefault(); go('/dashboard'); }
+  });
+
+  // ---- «⋯» menyu ----
+  var prefs = { autostart: false, close_to_tray: true }, compact = true;
+  try { compact = localStorage.getItem('panel-compact') !== '0'; } catch (e) {}
+  invoke('get_prefs').then(function (p) { prefs = p; }).catch(function () {});
+  $('more').onclick = function (e) {
+    var r = e.currentTarget.getBoundingClientRect();
+    invoke('show_more_menu', { x: r.left, y: r.bottom + 2, compact: compact });
+  };
+  function toggleCompact() { compact = !compact; try { localStorage.setItem('panel-compact', compact ? '1' : '0'); } catch (e) {} applyCompact(); }
+  function applyCompact() { invoke('panel_eval_compact', { on: compact }).catch(function () {}); }
+
+  // ---- Rust hodisalari ----
+  if (ev) {
+    ev.listen('panel', function (e) {
+      var p = e.payload || {};
+      if (p.kind === 'navigate' || p.kind === 'started') { document.body.classList.add('loading'); setActive(p.url); }
+      if (p.kind === 'finished') { document.body.classList.remove('loading'); setActive(p.url); if (!compact) applyCompact(); }
+    });
+    ev.listen('network', function (e) { if (e.payload === false) setConn(false, 'tarmoq uzildi'); else attempt(true); });
+    ev.listen('zoom', function (e) { $('zoom').textContent = Math.round(e.payload) + '%'; });
+    ev.listen('prefs', function (e) { prefs = e.payload || prefs; });
+    ev.listen('menu', function (e) { if (e.payload === 'compact') toggleCompact(); });
+  }
+
+  // ---- Holat paneli ----
+  invoke('get_client_info').then(function (i) {
+    $('st-host').textContent = i.hostname; $('st-ver').textContent = 'v' + i.version;
+    try { $('st-server').textContent = new URL(i.panel_url).host; } catch (e) {}
+  }).catch(function () {});
+  function clock() { var d = new Date(); $('st-clock').textContent = d.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' }) + '  ' + d.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }); }
+  clock(); setInterval(clock, 15000);
+
+  // Start
+  showPanel(false); layout(); attempt(false);
 })();
 </script>
 </body>

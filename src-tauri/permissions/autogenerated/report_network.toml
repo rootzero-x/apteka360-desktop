@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-report-network"
+description = "Enables the report_network command without any pre-configured scope."
+commands.allow = ["report_network"]
+
+[[permission]]
+identifier = "deny-report-network"
+description = "Denies the report_network command without any pre-configured scope."
+commands.deny = ["report_network"]

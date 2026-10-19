@@ -1,26 +1,33 @@
-// Apteka 360 Desktop — har bir sahifaga (lokal va https://apteka.agrom24.uz) kiritiladigan skript.
+// Apteka 360 Desktop — qobiq (shell) va panel (https://apteka.agrom24.uz) webview'lariga kiritiladigan skript.
 // Placeholder'lar Rust tomonida almashtiriladi.
 (function () {
   if (window.__APTEKA_DESKTOP__) return;
-  var CLIENT = '__CLIENT_HEADER__';
-  var DEVICE = '__DEVICE_HEADER__';
-  var PANEL = '__PANEL_URL__';
-  var VERSION = '__APP_VERSION__';
-  window.__APTEKA_DESKTOP__ = { version: VERSION, client: CLIENT, device: DEVICE, panel: PANEL };
+  var CLIENT = '__CLIENT_HEADER__', DEVICE = '__DEVICE_HEADER__', PANEL = '__PANEL_URL__', VERSION = '__APP_VERSION__';
+  var isShell = location.protocol === 'tauri:' || location.hostname === 'tauri.localhost' || location.protocol === 'file:';
+  window.__APTEKA_DESKTOP__ = { version: VERSION, client: CLIENT, device: DEVICE, panel: PANEL, shell: isShell };
 
   function invoke(cmd, args) {
-    try {
-      if (window.__TAURI__ && window.__TAURI__.core) return window.__TAURI__.core.invoke(cmd, args || {});
-    } catch (e) {}
+    try { if (window.__TAURI__ && window.__TAURI__.core) return window.__TAURI__.core.invoke(cmd, args || {}); } catch (e) {}
     return Promise.reject(new Error('tauri yo‘q'));
   }
 
+  // --- Klaviatura (ikkala webview'da): F11, F5, Ctrl+R, Ctrl+±/0, Alt+←/→ --------------------
+  window.addEventListener('keydown', function (e) {
+    var ctrl = e.ctrlKey || e.metaKey;
+    if (e.key === 'F11') { e.preventDefault(); invoke('toggle_fullscreen'); }
+    else if (e.key === 'F5' || (ctrl && (e.key === 'r' || e.key === 'R'))) { e.preventDefault(); invoke('panel_reload'); }
+    else if (ctrl && (e.key === '=' || e.key === '+')) { e.preventDefault(); invoke('zoom_step', { delta: 1 }); }
+    else if (ctrl && e.key === '-') { e.preventDefault(); invoke('zoom_step', { delta: -1 }); }
+    else if (ctrl && e.key === '0') { e.preventDefault(); invoke('zoom_step', { delta: 0 }); }
+    else if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); invoke('panel_back'); }
+    else if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); invoke('panel_forward'); }
+  }, true);
+
+  if (isShell) return; // qolgani faqat panel uchun
+
   // --- 1) API so'rovlariga X-Client / X-Client-Device qo'shish -------------------------------
   function shouldTag(url) {
-    try {
-      var u = new URL(url, location.href);
-      return /(^|\.)agrom24\.uz$/i.test(u.hostname);
-    } catch (e) { return false; }
+    try { var u = new URL(url, location.href); return /(^|\.)agrom24\.uz$/i.test(u.hostname); } catch (e) { return false; }
   }
   var origFetch = window.fetch;
   if (typeof origFetch === 'function') {
@@ -39,44 +46,34 @@
   var xo = XMLHttpRequest.prototype.open, xs = XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.open = function (m, url) { this.__aptekaTag = shouldTag(url); return xo.apply(this, arguments); };
   XMLHttpRequest.prototype.send = function () {
-    if (this.__aptekaTag) {
-      try { this.setRequestHeader('X-Client', CLIENT); this.setRequestHeader('X-Client-Device', DEVICE); } catch (e) {}
-    }
+    if (this.__aptekaTag) { try { this.setRequestHeader('X-Client', CLIENT); this.setRequestHeader('X-Client-Device', DEVICE); } catch (e) {} }
     return xs.apply(this, arguments);
   };
 
-  // --- 2) Klaviatura: F11, F5, Ctrl+± / Ctrl+0 ------------------------------------------------
-  window.addEventListener('keydown', function (e) {
-    var ctrl = e.ctrlKey || e.metaKey;
-    if (e.key === 'F11') { e.preventDefault(); invoke('toggle_fullscreen'); }
-    else if (e.key === 'F5') { e.preventDefault(); location.reload(); }
-    else if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); history.back(); }
-    else if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); history.forward(); }
-    else if (ctrl && (e.key === '=' || e.key === '+')) { e.preventDefault(); invoke('zoom_step', { delta: 1 }); }
-    else if (ctrl && e.key === '-') { e.preventDefault(); invoke('zoom_step', { delta: -1 }); }
-    else if (ctrl && e.key === '0') { e.preventDefault(); invoke('zoom_step', { delta: 0 }); }
-  }, true);
-
-  // --- 3) Offline overlay (web panel ichida aloqa uzilsa) -------------------------------------
-  if (location.protocol === 'tauri:' || location.hostname === 'tauri.localhost' || location.protocol === 'file:') return; // lokal loader o'zi ko'rsatadi
-  var overlay = null;
-  function showOverlay() {
-    if (overlay || !document.body) return;
-    overlay = document.createElement('div');
-    overlay.id = 'apteka-offline-overlay';
-    overlay.setAttribute('style', 'position:fixed;inset:0;z-index:2147483647;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:center;font-family:system-ui,Segoe UI,Arial,sans-serif;text-align:center');
-    overlay.innerHTML =
-      '<div style="max-width:440px;padding:32px">' +
-      '<div style="font-size:56px;line-height:1">📡</div>' +
-      '<h1 style="font-size:22px;margin:16px 0 8px">Internet aloqasi yo‘q</h1>' +
-      '<p style="color:#cbd5e1;font-size:15px;line-height:1.5">Apteka 360 serveriga ulanib bo‘lmadi. Tarmoq kabelini yoki Wi‑Fi ulanishini tekshiring. Aloqa tiklangach ilova o‘zi davom etadi.</p>' +
-      '<button id="apteka-retry" style="margin-top:18px;background:#14b8a6;color:#fff;border:0;border-radius:10px;padding:12px 22px;font-size:15px;cursor:pointer">Qayta urinish</button>' +
-      '<div style="margin-top:14px;font-size:12px;color:#64748b">Apteka 360 Desktop v' + VERSION + '</div></div>';
-    document.body.appendChild(overlay);
-    document.getElementById('apteka-retry').onclick = function () { location.reload(); };
+  // --- 2) Compact rejim: panelning o'z yon paneli yashiriladi (navigatsiya desktop qobig'ida) ---
+  // Qobiq `desktop-compact` localStorage kalitini boshqaradi ('0' — panel navigatsiyasini ko'rsatish).
+  var STYLE_ID = 'apteka-desktop-compact';
+  var CSS = 'div.grid.min-h-screen{grid-template-columns:minmax(0,1fr)!important}' +
+            'div.grid.min-h-screen>:first-child:not(.flex){display:none!important}' +
+            'html{scrollbar-gutter:stable}';
+  function applyCompact() {
+    var on = true; try { on = localStorage.getItem('desktop-compact') !== '0'; } catch (e) {}
+    var el = document.getElementById(STYLE_ID);
+    if (on && !el && document.head) { el = document.createElement('style'); el.id = STYLE_ID; el.textContent = CSS; document.head.appendChild(el); }
+    if (!on && el) el.remove();
   }
-  function hideOverlay() { if (overlay) { overlay.remove(); overlay = null; } }
-  window.addEventListener('offline', showOverlay);
-  window.addEventListener('online', function () { hideOverlay(); });
-  document.addEventListener('DOMContentLoaded', function () { if (navigator.onLine === false) showOverlay(); });
+  window.__aptekaSetCompact = function (on) { try { localStorage.setItem('desktop-compact', on ? '1' : '0'); } catch (e) {} applyCompact(); };
+  if (document.head) applyCompact(); else document.addEventListener('DOMContentLoaded', applyCompact);
+  new MutationObserver(function () { if (!document.getElementById(STYLE_ID)) applyCompact(); }).observe(document.documentElement, { childList: true });
+
+  // --- 3) Tarmoq holati → qobiq ---------------------------------------------------------------
+  window.addEventListener('offline', function () { invoke('report_network', { online: false }); });
+  window.addEventListener('online', function () { invoke('report_network', { online: true }); });
+
+  // --- 4) Standart kontekst menyusini o'chirish (matn maydonlaridan tashqari) — desktop his --------
+  document.addEventListener('contextmenu', function (e) {
+    var t = e.target; var tag = t && t.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || (t && t.isContentEditable)) return;
+    e.preventDefault();
+  });
 })();

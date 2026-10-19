@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-panel-reload"
+description = "Enables the panel_reload command without any pre-configured scope."
+commands.allow = ["panel_reload"]
+
+[[permission]]
+identifier = "deny-panel-reload"
+description = "Denies the panel_reload command without any pre-configured scope."
+commands.deny = ["panel_reload"]

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-panel-back"
+description = "Enables the panel_back command without any pre-configured scope."
+commands.allow = ["panel_back"]
+
+[[permission]]
+identifier = "deny-panel-back"
+description = "Denies the panel_back command without any pre-configured scope."
+commands.deny = ["panel_back"]

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-show-more-menu"
+description = "Enables the show_more_menu command without any pre-configured scope."
+commands.allow = ["show_more_menu"]
+
+[[permission]]
+identifier = "deny-show-more-menu"
+description = "Denies the show_more_menu command without any pre-configured scope."
+commands.deny = ["show_more_menu"]

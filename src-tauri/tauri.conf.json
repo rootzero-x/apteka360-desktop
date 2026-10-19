@@ -49,7 +49,6 @@
       "nsis": {
         "installMode": "currentUser",
         "languages": [
-          "Uzbek",
           "Russian",
           "English"
         ],

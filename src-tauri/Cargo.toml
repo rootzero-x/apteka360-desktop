@@ -15,7 +15,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["tray-icon"] }
+tauri = { version = "2", features = ["tray-icon", "unstable"] }
 tauri-plugin-opener = "2"
 tauri-plugin-process = "2"
 tauri-plugin-window-state = "2"
@@ -27,11 +27,11 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 gethostname = "1"
 # Avto-yangilanish: `updater` feature yoqilganda ulanadi (README: "Avto-yangilanish")
 tauri-plugin-updater = { version = "2", optional = true }
-tauri-plugin-dialog = { version = "2", optional = true }
+tauri-plugin-dialog = "2"
 
 [features]
 default = []
-updater = ["dep:tauri-plugin-updater", "dep:tauri-plugin-dialog"]
+updater = ["dep:tauri-plugin-updater"]
 
 [profile.release]
 codegen-units = 1
