@@ -16,3 +16,4 @@ dist/
 # OS / editor
 .DS_Store
 *.swp
+docs/.run*.log

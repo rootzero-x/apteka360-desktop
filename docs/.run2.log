@@ -1,6 +1,0 @@
-
-(apteka360-desktop:511131): libayatana-appindicator-WARNING **: 21:54:08.292: libayatana-appindicator is deprecated. Please use libayatana-appindicator-glib in newly written code.
-libEGL warning: DRI3 error: Could not get DRI3 device
-libEGL warning: Ensure your X server supports DRI3 to get accelerated rendering
-
-(apteka360-desktop:511131): libayatana-appindicator-WARNING **: 21:54:08.427: libayatana-appindicator is deprecated. Please use libayatana-appindicator-glib in newly written code.

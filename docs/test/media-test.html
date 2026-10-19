@@ -1,0 +1,18 @@
+<!doctype html><html lang="uz"><meta charset="utf-8"><title>Media test</title>
+<body style="font:18px system-ui;background:#111;color:#eee;padding:30px">
+<h2>Apteka 360 Desktop — media ruxsat sinovi</h2>
+<pre id="out">kutilmoqda…</pre>
+<audio id="a" autoplay loop></audio>
+<script>
+const out=document.getElementById('out'); const log=m=>{out.textContent+='\n'+m;};
+log('secureContext='+window.isSecureContext+'  mediaDevices='+!!navigator.mediaDevices);
+log('desktop='+JSON.stringify(window.__APTEKA_DESKTOP__||null));
+(async()=>{
+  try{ const s=await navigator.mediaDevices.getUserMedia({audio:true}); log('getUserMedia: OK tracks='+s.getAudioTracks().length); }
+  catch(e){ log('getUserMedia: '+e.name+' — '+e.message); }
+  try{ const c=new AudioContext(); const o=c.createOscillator(); o.connect(c.destination); o.start(); await new Promise(r=>setTimeout(r,300)); log('AudioContext state='+c.state); }
+  catch(e){ log('AudioContext: '+e.name); }
+  try{ const a=document.getElementById('a'); a.src='data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA='; await a.play(); log('audio.play(): OK (autoplay ruxsat)'); }
+  catch(e){ log('audio.play(): '+e.name+' — '+e.message); }
+})();
+</script></body></html>

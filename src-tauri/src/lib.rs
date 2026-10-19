@@ -12,6 +12,7 @@ use std::time::Duration;
 
 use tauri::menu::{CheckMenuItemBuilder, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri::webview::{PermissionKind, PermissionResponse};
 use tauri::{AppHandle, LogicalSize, Manager, State, Url, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_autostart::ManagerExt as _;
 
@@ -125,6 +126,15 @@ fn init_script(info: &ClientInfo) -> String {
         .replace("__DEVICE_HEADER__", &info.device_header)
         .replace("__PANEL_URL__", &info.panel_url)
         .replace("__APP_VERSION__", &info.version)
+}
+
+/// URL panel domeniga (yoki APTEKA_PANEL_URL hostiga) tegishlimi.
+fn is_panel_origin(url: &Url) -> bool {
+    let panel_host = Url::parse(PANEL_URL).ok().and_then(|u| u.host_str().map(str::to_owned));
+    match (url.host_str(), panel_host) {
+        (Some(h), Some(p)) => h.eq_ignore_ascii_case(&p) || h.to_ascii_lowercase().ends_with(".agrom24.uz"),
+        _ => false,
+    }
 }
 
 fn show_main(app: &AppHandle) {
@@ -267,6 +277,21 @@ pub fn run() {
                 .user_agent(USER_AGENT)
                 .zoom_hotkeys_enabled(true)
                 .initialization_script(init_script(&info))
+                // Kamera ovozi va «Gapirish» (push-to-talk): panel getUserMedia(audio) so'raydi,
+                // HLS ovozni ijro etadi. Faqat panel domeni uchun ruxsat beriladi,
+                // boshqa sahifalar standart (platforma) tartibida qoladi.
+                .on_permission_request(|webview, kind| {
+                    let trusted = webview
+                        .url()
+                        .map(|u| is_panel_origin(&u))
+                        .unwrap_or(false);
+                    match kind {
+                        PermissionKind::Microphone | PermissionKind::Camera | PermissionKind::Autoplay
+                            if trusted => PermissionResponse::Allow,
+                        PermissionKind::Autoplay => PermissionResponse::Allow,
+                        _ => PermissionResponse::Default,
+                    }
+                })
                 .build()?;
             let _ = window.set_min_size(Some(LogicalSize::new(1280.0, 800.0)));
             window.set_menu(build_menu(&handle)?)?;

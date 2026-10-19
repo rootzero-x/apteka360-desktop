@@ -16,6 +16,7 @@ Ilova o‘zida frontend kodini saqlamaydi: panel yangilanganda desktop ilovani q
 | Menyu: Fayl (Bosh sahifa `Alt+Home`, Qayta yuklash `Ctrl+R`, Chiqish `Ctrl+Q`), `Alt+←/→` orqaga/oldinga, Ko‘rinish (Kattalashtirish `Ctrl+=`, Kichraytirish `Ctrl+-`, Asl o‘lcham `Ctrl+0`, To‘liq ekran `F11`), Yordam | `src-tauri/src/lib.rs` → `build_menu` |
 | Offline bo‘lsa o‘zbekcha xato ekrani, «Qayta urinish» tugmasi, 15 s da avtomatik qayta urinish | `ui/index.html` (ishga tushishda), `src-tauri/src/inject.js` (panel ichida aloqa uzilsa overlay) |
 | API so‘rovlariga `X-Client: desktop/<versiya>` va `X-Client-Device: <kompyuter nomi> · Desktop ilova` | `src-tauri/src/inject.js` (fetch/XHR), `lib.rs` (dastlabki navigatsiya sarlavhalari) |
+| Kamera ovozi (HLS audio, autoplay) va «Gapirish» (mikrofon, getUserMedia) — panel domeni uchun ruxsat avtomatik | `lib.rs` → `on_permission_request`, `is_panel_origin` |
 | Avto-yangilanish uchun joy (`updater` feature) | `lib.rs` → `mod updater`, `src-tauri/tauri.updater.conf.json` |
 | Windows EXE (NSIS) + MSI, Linux `.deb` / `.rpm` / `.AppImage` | `.github/workflows/build.yml`, `docker/build.sh` |
 
@@ -37,9 +38,9 @@ so‘rovga ikkala sarlavhani qo‘shadi. API CORS allow-list’ida bu sarlavhala
 
 ## Skrinshotlar (Linux build, Xvfb)
 
-| Yuklanish | Login ekrani | Offline |
-|---|---|---|
-| ![](docs/screenshot-loader.png) | ![](docs/screenshot-login.png) | ![](docs/screenshot-offline.png) |
+| Yuklanish | Login ekrani | Offline | Media ruxsat sinovi |
+|---|---|---|---|
+| ![](docs/screenshot-loader.png) | ![](docs/screenshot-login.png) | ![](docs/screenshot-offline.png) | ![](docs/screenshot-media-test.png) |
 
 ## Tayyor artefaktlar (lokal build, 2026-10-18)
 
@@ -156,6 +157,20 @@ Yoqish tartibi:
 | Code Signing sertifikati (`.pfx`) + paroli | SmartScreen ogohlantirishini olib tashlash (ixtiyoriy) | GitHub Secrets; `tauri.conf.json → bundle.windows.certificateThumbprint` |
 
 `.gitignore` da `*.key`, `.env*`, `dist/`, `docker/.cache/` bor.
+
+## Kamera ovozi va «Gapirish» (0.1.0+)
+
+Web panelning kamera ekranida «Ovoz» (HLS oqimdagi audio) va «Gapirish» (push-to-talk: `getUserMedia({audio})` → Edge → Hikvision
+two-way audio) tugmalari bor. Desktop qobiqda buning uchun:
+
+- `WebviewWindowBuilder::on_permission_request` — `Microphone`, `Camera`, `Autoplay` so‘rovlari **faqat** panel domeni
+  (`APTEKA_PANEL_URL` hosti yoki `*.agrom24.uz`) uchun avtomatik ruxsat etiladi; boshqa sahifalar uchun platforma standarti
+  (Windows — WebView2 dialogi, Linux — rad). Windows WebView2 va Linux WebKitGTK ikkalasida ishlaydi (Tauri 2.12).
+- Autoplay: wry standart holatda WebView2 ga `--autoplay-policy=no-user-gesture-required`, WebKitGTK ga `AutoplayPolicy::Allow` beradi;
+  panel baribir tugma bosilgandan keyin ovoz yoqadi.
+- Secure context: panel `https://` — `getUserMedia` mavjud. Mikrofon qurilmasi Windows’da «Sozlamalar → Maxfiylik → Mikrofon» da
+  desktop ilovalarga ruxsat etilgan bo‘lishi kerak, aks holda `NotAllowedError`/`NotFoundError` qaytadi.
+- Lokal sinov sahifasi: `docs/test/media-test.html` (`APTEKA_PANEL_URL=http://127.0.0.1:8088/media-test.html docker/build.sh linux`).
 
 ## Ma’lum cheklovlar
 
