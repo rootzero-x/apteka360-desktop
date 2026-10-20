@@ -222,10 +222,11 @@
       var cols = d.columns || [], rows = d.rows || [];
       var rev = rows.find(function (x) { return x.key === 'revenue'; });
       var tb = h('tbody');
+      var FOMDEP = { revenue: 1, cogs: 1, gross: 1, net: 1 };
       rows.forEach(function (r) {
-        var strong = r.kind === 'sub' || r.kind === 'total';
+        var strong = r.kind === 'sub' || r.kind === 'total', noFom = !d.connected && FOMDEP[r.key];
         var tr = h('tr', { style: { background: r.kind === 'total' ? 'var(--accent-subtle, transparent)' : r.kind === 'sub' ? 'var(--layer-alt, transparent)' : '', fontWeight: strong ? '600' : '400' } }, h('td', { text: r.label }));
-        (r.values || []).forEach(function (v) { tr.appendChild(h('td', { class: 'r', text: mln(v), style: { color: r.kind === 'total' ? (v < 0 ? 'var(--crit)' : 'var(--ok)') : v < 0 ? 'var(--text-2)' : '' } })); });
+        (r.values || []).forEach(function (v) { tr.appendChild(noFom ? h('td', { class: 'r muted', text: '—', title: 'FOM ulanmagan' }) : h('td', { class: 'r', text: mln(v), style: { color: r.kind === 'total' ? (v < 0 ? 'var(--crit)' : 'var(--ok)') : v < 0 ? 'var(--text-2)' : '' } })); });
         var tot = r.values ? r.values[r.values.length - 1] : 0, rt = rev ? rev.values[rev.values.length - 1] : 0;
         tr.appendChild(h('td', { class: 'r muted', text: strong && rt ? (Math.round(tot / rt * 1000) / 10 + '%').replace('.', ',') : '' }));
         tb.appendChild(tr);
@@ -233,7 +234,7 @@
       page.appendChild(U.card(null, null, h('div', { class: 'table-wrap' }, h('table', { class: 'dg' },
         h('thead', null, h('tr', null, [h('th', { text: 'Ko‘rsatkich' })].concat(cols.map(function (c) { return h('th', { class: 'r', text: c }); })).concat([h('th', { class: 'r', text: 'Marja' })]))), tb))));
       var net = rows.find(function (x) { return x.key === 'net'; });
-      if (net && cols.length > 1) {
+      if (net && cols.length > 1 && d.connected) {
         page.appendChild(h('div', { class: 'section-title', text: 'Sof foyda · ' + (gb === 'month' ? 'oylar' : 'filiallar') + ' kesimida' }));
         page.appendChild(U.card(null, null, U.hbar(cols.slice(0, -1).map(function (c, i) { return { l: c, v: net.values[i] || 0 }; }), { fmt: mln })));
       }

@@ -371,7 +371,9 @@ async fn api(
     body: Option<serde_json::Value>,
     idem: Option<String>,
 ) -> Result<ApiResult, String> {
-    if !path.starts_with("/v1/") || path.starts_with("/v1/auth/") {
+    // Kirish/refresh faqat panel ko'prigi orqali (cookie); sessiyalar va kirishlar tarixini o'qishga ruxsat
+    let auth_read = method == "GET" && (path == "/v1/auth/sessions" || path == "/v1/auth/logins" || path.starts_with("/v1/auth/sessions?") || path.starts_with("/v1/auth/logins?"));
+    if !path.starts_with("/v1/") || (path.starts_with("/v1/auth/") && !auth_read) {
         return Err("ruxsat etilmagan yo'l".into());
     }
     let token = app.state::<TokenState>().0.lock().map_err(|e| e.to_string())?.clone();

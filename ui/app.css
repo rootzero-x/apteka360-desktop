@@ -327,3 +327,5 @@ textarea.tb { height: 80px; padding: 8px 10px; resize: vertical; }
 .switch::after { content: ""; position: absolute; left: 4px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--text-2); transition: left .12s; }
 .switch.on { background: var(--accent); border-color: var(--accent); }
 .switch.on::after { left: 24px; background: var(--on-accent); }
+
+.tb.bad { border-bottom-color: var(--crit); }

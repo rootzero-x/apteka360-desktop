@@ -127,8 +127,9 @@
         var m = K[k.key] || [k.key, 'chart'], val = k.value, foot = k.prev != null && k.prev !== 0 ? 'oldingi davr: ' + A.moneyShort(k.prev).v + ' ' + A.moneyShort(k.prev).u.replace(' so‘m', '') : '', src = k.source;
         if (!val && k.key === 'supplierDebt' && supDebt) { val = supDebt; src = 'FIRMALAR'; foot = 'muddati o‘tgan: ' + A.moneyShort(supOver).v + ' ' + A.moneyShort(supOver).u; }
         else if (!val && k.key === 'payments7d' && supDue) { val = supDue; src = 'FIRMALAR'; foot = 'muddati o‘tgan + yaqin to‘lovlar'; }
-        else if (!val && k.key === 'cash' && todayCash) { val = todayCash; src = 'FOM BUGUN'; foot = 'bugungi naqd tushum (kassalar)'; }
-        var noData = !val && src === 'FOM' && !d.connected;
+        else if (k.key === 'cash' && (!val || !d.connected) && todayCash) { val = todayCash; src = 'KASSALAR'; foot = 'bugungi naqd (kassa yopilishi ma’lumoti)'; }
+        // FOM ulanmagan: FOM manbali va tushumga bog'liq (sof foyda) qiymatlar ishonchsiz — «—»
+        var noData = !d.connected && (src === 'FOM' || k.key === 'netProfit');
         grid.appendChild(kpi(m[0], noData ? { v: '—', u: '' } : val, { icon: m[1], delta: noData ? null : k.deltaPct, spark: noData ? null : k.spark, src: src, foot: noData ? 'FOM ulanmagan' : foot }));
       });
       page.appendChild(grid);
@@ -705,7 +706,32 @@
     return box;
   }
   function field(label, control, hint) { return h('div', { class: 'field' }, h('label', { text: label }), control, hint ? h('div', { class: 'hint', text: hint }) : null); }
-  function input(opts) { opts = opts || {}; var i = h('input', Object.assign({ class: 'tb' + (opts.num ? ' num' : ''), spellcheck: 'false' }, opts.attrs || {})); if (opts.value != null) i.value = opts.value; if (opts.placeholder) i.placeholder = opts.placeholder; if (opts.type) i.type = opts.type; return i; }
+  function input(opts) {
+    opts = opts || {};
+    if (opts.type === 'date') return dateInput(opts.value, opts);
+    var i = h('input', Object.assign({ class: 'tb' + (opts.num ? ' num' : ''), spellcheck: 'false' }, opts.attrs || {})); if (opts.value != null) i.value = opts.value; if (opts.placeholder) i.placeholder = opts.placeholder; if (opts.type) i.type = opts.type; return i;
+  }
+  /** Sana maydoni: ekranda kk.oo.yyyy, `.value` esa ISO (yyyy-mm-dd) — tizim (US) formatiga bog'liq emas */
+  var NATIVE_VALUE = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  function dateInput(iso, opts) {
+    var i = h('input', { class: 'tb', inputmode: 'numeric', placeholder: 'kk.oo.yyyy', maxlength: '10', spellcheck: 'false' });
+    i.style.width = '130px';
+    function toIso(t) { var m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(String(t || '').trim()); if (!m) return ''; var d = +m[1], mo = +m[2]; if (mo < 1 || mo > 12 || d < 1 || d > 31) return ''; return m[3] + '-' + ('0' + mo).slice(-2) + '-' + ('0' + d).slice(-2); }
+    function toDisp(v) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v || '')); return m ? m[3] + '.' + m[2] + '.' + m[1] : ''; }
+    Object.defineProperty(i, 'value', { configurable: true,
+      get: function () { return toIso(NATIVE_VALUE.get.call(i)); },
+      set: function (v) { NATIVE_VALUE.set.call(i, toDisp(v)); } });
+    i.addEventListener('input', function () { // avtomatik nuqta: 20092026 → 20.09.2026
+      var raw = NATIVE_VALUE.get.call(i), dg = raw.replace(/\D/g, '').slice(0, 8), out = dg;
+      if (dg.length > 4) out = dg.slice(0, 2) + '.' + dg.slice(2, 4) + '.' + dg.slice(4); else if (dg.length > 2) out = dg.slice(0, 2) + '.' + dg.slice(2);
+      if (out !== raw) NATIVE_VALUE.set.call(i, out);
+      i.classList.toggle('bad', dg.length === 8 && !toIso(out));
+    });
+    // to'liq sana kiritilganda yoki maydondan chiqqanda change hodisasi (ilovadagi onchange ishlovchilar uchun)
+    i.addEventListener('keydown', function (e) { if (e.key === 'Enter') i.dispatchEvent(new Event('change')); });
+    if (iso) i.value = iso;
+    return i;
+  }
   /** So'm kiritish maydoni (1 234 567 formatida); .num() — qiymat */
   function moneyInput(value) {
     var i = h('input', { class: 'tb num', inputmode: 'numeric', placeholder: '0' });
