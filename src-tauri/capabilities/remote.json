@@ -22,6 +22,7 @@
     "allow-panel-back",
     "allow-panel-forward",
     "allow-report-network",
-    "allow-get-client-info"
+    "allow-get-client-info",
+    "allow-api-result"
   ]
 }

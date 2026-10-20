@@ -85,6 +85,36 @@
   .spin { width: 28px; height: 28px; border: 3px solid var(--stroke-strong); border-top-color: var(--accent); border-radius: 50%; margin: 18px auto 0; animation: rot .9s linear infinite; }
   @keyframes rot { to { transform: rotate(360deg); } }
 
+  /* ---- Native login ---- */
+  #card-login { background: var(--bg); }
+  #card-login .inner { max-width: 460px; width: 100%; text-align: left; padding: 0 24px; }
+  .login-box { background: var(--layer); border: 1px solid var(--stroke); border-radius: 8px; padding: 28px 28px 24px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+  .login-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .login-head .logo { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg,#14b8a6,#0e7490); color: #fff; font: 700 13px/40px var(--font); text-align: center; }
+  .login-head h1 { font-size: 20px; font-weight: 600; margin: 0; }
+  .login-head .sub { font-size: 12px; color: var(--text-3); }
+  .field { margin-top: 12px; }
+  .field label { display: block; font-size: 13px; margin-bottom: 4px; color: var(--text-2); }
+  .field input { width: 100%; height: 34px; padding: 0 10px; font: inherit; color: var(--text); background: var(--layer-alt); border: 1px solid var(--stroke-strong); border-bottom-color: var(--text-3); border-radius: 4px; outline: none; user-select: text; -webkit-user-select: text; }
+  .field input:focus { border-bottom: 2px solid var(--accent); background: var(--layer); }
+  .field input.otp { font-size: 24px; letter-spacing: .45em; text-align: center; height: 48px; }
+  .row { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; font-size: 13px; white-space: nowrap; gap: 12px; }
+  .chk { display: flex; align-items: center; gap: 8px; }
+  .chk input { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; }
+  a.link { color: var(--accent); text-decoration: none; cursor: default; }
+  a.link:hover { text-decoration: underline; }
+  .btn.full { width: 100%; margin-top: 18px; }
+  .btn.sec { background: var(--layer-alt); color: var(--text); border-color: var(--stroke-strong); }
+  .btn:disabled { opacity: .5; }
+  .err { color: #c42b1c; font-size: 13px; margin-top: 10px; min-height: 18px; }
+  @media (prefers-color-scheme: dark) { .err { color: #ff99a4; } }
+  .login-foot { text-align: center; font-size: 12px; color: var(--text-3); margin-top: 16px; }
+  .step { display: none; } .step.show { display: block; }
+  .kv { display: grid; grid-template-columns: 110px 1fr; gap: 6px 12px; font-size: 13px; margin-top: 12px; padding: 12px; background: var(--layer-alt); border-radius: 6px; }
+  .kv span:nth-child(odd) { color: var(--text-3); }
+  .note { font-size: 13px; color: var(--text-2); margin: 0 0 4px; }
+  .login-box.busy { pointer-events: none; opacity: .85; }
+
   /* ---- Status bar ---- */
   #status { grid-area: status; display: flex; align-items: center; gap: 18px; padding: 0 12px; font-size: 12px; color: var(--text-2); background: var(--bg); border-top: 1px solid var(--stroke); white-space: nowrap; }
   .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #16a34a; margin-right: 6px; vertical-align: 0; }
@@ -126,6 +156,52 @@
 
 <div id="content">
   <div class="card show" id="card-loading"><div class="inner"><div class="ico">A360</div><h1>Apteka 360</h1><p>Serverga ulanmoqda…</p><div class="spin"></div></div></div>
+  <div class="card" id="card-login"><div class="inner"><div class="login-box" id="login-box">
+    <div class="login-head"><span class="logo">A360</span><div><h1>Apteka 360</h1><div class="sub">Dorixona tarmog‘i boshqaruv tizimi</div></div></div>
+
+    <div class="step show" id="s-creds">
+      <p class="note">Tizimga kirish uchun telefon raqam yoki e-pochta va parolingizni kiriting.</p>
+      <div class="field"><label for="f-login">Telefon yoki e-pochta</label><input id="f-login" autocomplete="username" spellcheck="false"></div>
+      <div class="field"><label for="f-pass">Parol</label><input id="f-pass" type="password" autocomplete="current-password"></div>
+      <div class="row"><label class="chk"><input type="checkbox" id="f-remember" checked> Bu qurilmani eslab qolish</label><a class="link" id="a-forgot">Parolni unutdingizmi?</a></div>
+      <div class="err" id="e-creds"></div>
+      <button class="btn full" id="b-login">Kirish</button>
+    </div>
+
+    <div class="step" id="s-otp">
+      <p class="note"><b>Tasdiqlash kodi.</b> Telegram yoki SMS orqali yuborilgan 6 xonali kodni kiriting.</p>
+      <div class="field"><input id="f-otp" class="otp" inputmode="numeric" maxlength="6" autocomplete="one-time-code"></div>
+      <div class="row"><a class="link" id="a-resend">Kodni qayta yuborish</a><a class="link" id="a-back1">Orqaga</a></div>
+      <div class="err" id="e-otp"></div>
+      <button class="btn full" id="b-otp">Tasdiqlash</button>
+    </div>
+
+    <div class="step" id="s-device">
+      <p class="note"><b>Yangi qurilma.</b> Bu kompyuterdan birinchi marta kirilmoqda. Ma’lumotlarni tekshiring:</p>
+      <div class="kv"><span>Qurilma</span><span id="d-device"></span><span>Joylashuv</span><span id="d-loc"></span><span>IP manzil</span><span id="d-ip"></span></div>
+      <div class="err" id="e-device"></div>
+      <button class="btn full" id="b-trust">Bu men — davom etish</button>
+      <button class="btn full sec" id="b-block">Bu men emas — bloklash</button>
+    </div>
+
+    <div class="step" id="s-forgot">
+      <p class="note"><b>Parolni tiklash.</b> Telefon raqam yoki e-pochtangizni kiriting — tiklash kodi Telegram/SMS orqali keladi.</p>
+      <div class="field"><label for="f-flogin">Telefon yoki e-pochta</label><input id="f-flogin" spellcheck="false"></div>
+      <div class="err" id="e-forgot"></div>
+      <button class="btn full" id="b-forgot">Kod yuborish</button>
+      <div class="login-foot"><a class="link" id="a-back2">Kirishga qaytish</a></div>
+    </div>
+
+    <div class="step" id="s-reset">
+      <p class="note"><b>Yangi parol.</b> Kelgan kodni va yangi parolni kiriting. Hisobning barcha sessiyalari yakunlanadi.</p>
+      <div class="field"><label for="f-rcode">Tiklash kodi</label><input id="f-rcode" inputmode="numeric" maxlength="6"></div>
+      <div class="field"><label for="f-pw1">Yangi parol</label><input id="f-pw1" type="password" autocomplete="new-password"></div>
+      <div class="field"><label for="f-pw2">Yangi parol (takror)</label><input id="f-pw2" type="password" autocomplete="new-password"></div>
+      <div class="row"><a class="link" id="a-resend2">Kodni qayta yuborish</a><a class="link" id="a-back3">Orqaga</a></div>
+      <div class="err" id="e-reset"></div>
+      <button class="btn full" id="b-reset">Parolni o‘zgartirish</button>
+    </div>
+  </div><div class="login-foot" id="login-foot">Apteka 360 Desktop</div></div></div>
   <div class="card" id="card-offline"><div class="inner"><div class="ico">A360</div><h1>Internet aloqasi yo‘q</h1>
     <p>Apteka 360 serveriga ulanib bo‘lmadi. Tarmoq kabelini yoki Wi‑Fi ulanishini tekshiring va qayta urinib ko‘ring.</p>
     <button class="btn" id="retry">Qayta urinish</button><div class="small" id="countdown"></div><div class="small" id="err"></div></div></div>
@@ -225,7 +301,9 @@
     ALL.forEach(function (it) { if (p === it.path || p.indexOf(it.path + '/') === 0 || (it.alias || []).indexOf(p) >= 0) { if (!found || it.path.length > found.path.length) found = it; } });
     if (found) { found.el.classList.add('active'); $('crumb-group').textContent = found.group_label; $('crumb-page').textContent = found.label; }
     else { $('crumb-group').textContent = 'Apteka 360'; $('crumb-page').textContent = p === '/login' ? 'Tizimga kirish' : p; }
-    document.body.classList.toggle('bare', online === true && (p === '/login' || p.indexOf('/login/') === 0));
+    var isLogin = p === '/login' || p.indexOf('/login/') === 0;
+    document.body.classList.toggle('bare', online === true && isLogin);
+    if (!isLogin) { clearTimeout(loginTimer); if (loginShown) { loginShown = false; card(null); showPanel(true); } }
     layout();
   }
 
@@ -244,10 +322,11 @@
 
   // ---- Ulanish / offline ----
   var timer = null, left = 0;
-  function card(id) { ['card-loading', 'card-offline'].forEach(function (c) { $(c).classList.toggle('show', c === id); }); }
+  function card(id) { ['card-loading', 'card-offline', 'card-login'].forEach(function (c) { $(c).classList.toggle('show', c === id); }); }
+  var loginShown = false, loginTimer = null;
   function setConn(ok, msg) {
     online = ok; $('dot').classList.toggle('off', !ok); $('st-conn').textContent = ok ? 'Serverga ulangan' : 'Aloqa yo‘q';
-    if (ok) { card(null); showPanel(true); document.body.classList.remove('nav-compact-forced'); }
+    if (ok) { if (!loginShown) { card(null); showPanel(true); } }
     else { document.body.classList.remove('bare'); showPanel(false); card('card-offline'); $('err').textContent = msg ? 'Tafsilot: ' + msg : ''; left = 15; tick(); clearInterval(timer); timer = setInterval(tick, 1000); }
   }
   function tick() { $('countdown').textContent = left > 0 ? 'Avtomatik qayta urinish: ' + left + ' s' : ''; if (left-- <= 0) { clearInterval(timer); attempt(); } }
@@ -287,22 +366,101 @@
   function toggleCompact() { compact = !compact; try { localStorage.setItem('panel-compact', compact ? '1' : '0'); } catch (e) {} applyCompact(); }
   function applyCompact() { invoke('panel_eval_compact', { on: compact }).catch(function () {}); }
 
+  // ---- API ko'prigi (panel webview konteksti orqali) ----
+  var pending = {};
+  function api(path, body) {
+    return new Promise(function (resolve, reject) {
+      var id = 'r' + Date.now() + Math.random().toString(36).slice(2, 7);
+      var t = setTimeout(function () { delete pending[id]; reject({ error: 'Server javob bermadi. Qayta urinib ko‘ring.', code: 'timeout' }); }, 20000);
+      pending[id] = function (r) { clearTimeout(t); if (r.status >= 200 && r.status < 300) resolve(r.body || {}); else reject(r.body && r.body.error ? r.body : { error: 'Server xatosi: ' + r.status, code: 'unavailable' }); };
+      invoke('panel_api', { id: id, path: path, body: body || {} }).catch(function (e) { clearTimeout(t); delete pending[id]; reject({ error: String(e), code: 'bridge' }); });
+    });
+  }
+  function deviceId() { try { var id = localStorage.getItem('a360-device-id'); if (!id) { id = crypto.randomUUID(); localStorage.setItem('a360-device-id', id); } return id; } catch (e) { return 'desktop'; } }
+
+  // ---- Native login ----
+  var L = (function () {
+    var challenge = null, device = null, resendAt = 0, timerR = null;
+    function step(id) { ['s-creds', 's-otp', 's-device', 's-forgot', 's-reset'].forEach(function (s) { $(s).classList.toggle('show', s === id); });
+      var f = { 's-creds': 'f-login', 's-otp': 'f-otp', 's-forgot': 'f-flogin', 's-reset': 'f-rcode' }[id]; if (f) setTimeout(function () { $(f).focus(); }, 50); }
+    function busy(b) { $('login-box').classList.toggle('busy', b); }
+    function err(id, msg) { $(id).textContent = msg || ''; }
+    function fail(e) { return (e && e.error) || (e && e.message) || String(e); }
+    function startResend(sec) {
+      resendAt = Date.now() + sec * 1000; clearInterval(timerR);
+      function paint() { var left = Math.max(0, Math.ceil((resendAt - Date.now()) / 1000)); var txt = left > 0 ? 'Kodni qayta yuborish (' + left + ' s)' : 'Kodni qayta yuborish';
+        $('a-resend').textContent = txt; $('a-resend2').textContent = txt; if (left <= 0) clearInterval(timerR); }
+      paint(); timerR = setInterval(paint, 1000);
+    }
+    function reset() { challenge = null; device = null; ['e-creds', 'e-otp', 'e-device', 'e-forgot', 'e-reset'].forEach(function (i) { err(i); }); $('f-pass').value = ''; $('f-otp').value = ''; busy(false); step('s-creds'); }
+    function done() { busy(false); loginShown = false; card('card-loading'); invoke('panel_navigate', { path: '/login' }); }
+
+    $('b-login').onclick = function () {
+      var login = $('f-login').value.trim(), pass = $('f-pass').value;
+      if (!login || !pass) { err('e-creds', 'Login va parolni kiriting.'); return; }
+      err('e-creds'); busy(true);
+      api('/v1/auth/login', { login: login, password: pass }).then(function (r) {
+        challenge = r.challengeId; busy(false); $('f-otp').value = ''; err('e-otp'); startResend(r.resendInSec || 60); step('s-otp');
+      }).catch(function (e) { busy(false); err('e-creds', fail(e)); });
+    };
+    $('b-otp').onclick = function () {
+      var code = $('f-otp').value.replace(/\D/g, ''); if (code.length !== 6) { err('e-otp', '6 xonali kodni kiriting.'); return; }
+      err('e-otp'); busy(true);
+      api('/v1/auth/otp', { challengeId: challenge, code: code, deviceId: $('f-remember').checked ? deviceId() : ('tmp-' + Math.random().toString(36).slice(2)) }).then(function (r) {
+        if (r.newDevice) { device = r.newDevice; $('d-device').textContent = device.device || ''; $('d-loc').textContent = device.location || ''; $('d-ip').textContent = device.ip || ''; busy(false); step('s-device'); }
+        else done();
+      }).catch(function (e) { busy(false); err('e-otp', fail(e)); if (e && e.details && e.details.attemptsLeft === 0) { step('s-creds'); err('e-creds', fail(e)); } });
+    };
+    $('b-trust').onclick = function () { busy(true); api('/v1/auth/device', { confirmId: device.confirmId, decision: 'trust' }).then(done).catch(function (e) { busy(false); err('e-device', fail(e)); }); };
+    $('b-block').onclick = function () { busy(true); api('/v1/auth/device', { confirmId: device.confirmId, decision: 'block' }).catch(function () {}).then(function () { reset(); err('e-creds', 'Qurilma bloklandi. Agar bu siz bo‘lmasangiz, parolni o‘zgartiring.'); }); };
+    function resend() { if (Date.now() < resendAt || !challenge) return; busy(true); api('/v1/auth/otp/resend', { challengeId: challenge }).then(function (r) { busy(false); startResend(r.resendInSec || 60); }).catch(function (e) { busy(false); err($('s-otp').classList.contains('show') ? 'e-otp' : 'e-reset', fail(e)); if (e && e.details && e.details.resendInSec) startResend(e.details.resendInSec); }); }
+    $('a-resend').onclick = resend; $('a-resend2').onclick = resend;
+    $('a-forgot').onclick = function () { $('f-flogin').value = $('f-login').value; err('e-forgot'); step('s-forgot'); };
+    $('a-back1').onclick = reset; $('a-back2').onclick = reset; $('a-back3').onclick = function () { step('s-forgot'); };
+    $('b-forgot').onclick = function () {
+      var login = $('f-flogin').value.trim(); if (!login) { err('e-forgot', 'Telefon yoki e-pochtani kiriting.'); return; }
+      busy(true); api('/v1/auth/password/forgot', { login: login }).then(function (r) { challenge = r.challengeId; busy(false); startResend(r.resendInSec || 60); step('s-reset'); }).catch(function (e) { busy(false); err('e-forgot', fail(e)); });
+    };
+    $('b-reset').onclick = function () {
+      var code = $('f-rcode').value.trim(), p1 = $('f-pw1').value, p2 = $('f-pw2').value;
+      if (code.length !== 6) { err('e-reset', '6 xonali kodni kiriting.'); return; }
+      if (p1.length < 8) { err('e-reset', 'Parol kamida 8 ta belgidan iborat bo‘lsin.'); return; }
+      if (p1 !== p2) { err('e-reset', 'Parollar mos emas.'); return; }
+      busy(true); api('/v1/auth/password/reset', { challengeId: challenge, code: code, password: p1 }).then(function () { reset(); $('f-login').value = $('f-flogin').value; err('e-creds', 'Parol o‘zgartirildi. Yangi parol bilan kiring.'); }).catch(function (e) { busy(false); err('e-reset', fail(e)); });
+    };
+    ['f-login', 'f-pass'].forEach(function (i) { $(i).addEventListener('keydown', function (e) { if (e.key === 'Enter') $('b-login').click(); }); });
+    $('f-otp').addEventListener('input', function () { this.value = this.value.replace(/\D/g, '').slice(0, 6); if (this.value.length === 6) $('b-otp').click(); });
+    $('f-otp').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('b-otp').click(); });
+    ['f-rcode', 'f-pw1', 'f-pw2'].forEach(function (i) { $(i).addEventListener('keydown', function (e) { if (e.key === 'Enter') $('b-reset').click(); }); });
+    $('f-flogin').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('b-forgot').click(); });
+    return { reset: reset };
+  })();
+
   // ---- Rust hodisalari ----
   if (ev) {
     ev.listen('panel', function (e) {
       var p = e.payload || {};
       if (p.kind === 'navigate' || p.kind === 'started') { document.body.classList.add('loading'); setActive(p.url); }
-      if (p.kind === 'finished') { document.body.classList.remove('loading'); setActive(p.url); if (!compact) applyCompact(); }
+      if (p.kind === 'finished') {
+        document.body.classList.remove('loading'); setActive(p.url); if (!compact) applyCompact();
+        var path = ''; try { path = new URL(p.url).pathname; } catch (e) {}
+        if (online === true && (path === '/login' || path.indexOf('/login/') === 0)) {
+          clearTimeout(loginTimer);
+          loginTimer = setTimeout(function () { if (!loginShown) { loginShown = true; showPanel(false); card('card-login'); L.reset(); } }, 700);
+        }
+      }
     });
     ev.listen('network', function (e) { if (e.payload === false) setConn(false, 'tarmoq uzildi'); else attempt(true); });
     ev.listen('zoom', function (e) { $('zoom').textContent = Math.round(e.payload) + '%'; });
     ev.listen('prefs', function (e) { prefs = e.payload || prefs; });
+    ev.listen('api', function (e) { var r = e.payload || {}; var cb = pending[r.id]; if (cb) { delete pending[r.id]; cb(r); } });
     ev.listen('menu', function (e) { if (e.payload === 'compact') toggleCompact(); });
   }
 
   // ---- Holat paneli ----
   invoke('get_client_info').then(function (i) {
-    $('st-host').textContent = i.hostname; $('st-ver').textContent = 'v' + i.version;
+    if (i.selftest) { setTimeout(function () { if (loginShown) { $('f-login').value = 'selftest@apteka360.uz'; $('f-pass').value = 'noto‘g‘ri-parol'; $('b-login').click(); } }, 4000); }
+    $('st-host').textContent = i.hostname; $('st-ver').textContent = 'v' + i.version; $('login-foot').textContent = 'Apteka 360 Desktop v' + i.version + '  ·  ' + i.hostname;
     try { $('st-server').textContent = new URL(i.panel_url).host; } catch (e) {}
   }).catch(function () {});
   function clock() { var d = new Date(); $('st-clock').textContent = d.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' }) + '  ' + d.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }); }

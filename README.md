@@ -28,6 +28,10 @@ Ilova oddiy «web oynasi» emas — Windows 11 (Fluent Design) uslubidagi **nati
   (yon panel, buyruqlar paneli, holat paneli, offline ekrani), `panel` — web panel, qobiq ko‘rsatgan maydonga joylashadi.
 - Yon panel panelning barcha bo‘limlariga olib boradi (`/dashboard`, `/cash`, `/cameras`, …); panelning o‘z yon paneli
   **compact rejimda** yashiriladi (⋯ → «Panel navigatsiyasini yashirish» bilan qaytariladi). Login ekranida qobiq yashirinadi.
+- **Native login:** kirish ekrani web sahifa emas — qobiqning o‘zida (Fluent dialog): login/parol → Telegram/SMS kod → yangi
+  qurilmani tasdiqlash, parolni tiklash. API so‘rovlari `panel_api` ko‘prigi orqali **panel webview kontekstida** bajariladi
+  (origin `apteka.agrom24.uz`), shuning uchun httpOnly refresh-cookie web paneldagidek o‘rnatiladi va panel sessiyani o‘zi tiklaydi.
+  Panel `/login` ga qaytsa (chiqish, sessiya tugashi) qobiq yana native login ko‘rsatadi. `APTEKA_SELFTEST=1` (runtime) — ko‘prik diagnostikasi.
 - «⋯» — **native** Windows kontekst menyusi (Bosh sahifa, Qayta yuklash, Brauzerda ochish, Windows bilan ishga tushirish,
   Yopganda trayga yig‘ish, To‘liq ekran, Dastur haqida (native dialog), Chiqish). Tizim tray ikonkasi, bitta nusxa, oyna holati.
 - Tugmalar: `F5`/`Ctrl+R` yangilash, `Alt+←/→` orqaga/oldinga, `Ctrl+±/0` masshtab, `F11` to‘liq ekran, `Ctrl+B` yon panel,
@@ -69,9 +73,9 @@ so‘rovga ikkala sarlavhani qo‘shadi. API CORS allow-list’ida bu sarlavhala
 
 ## Skrinshotlar (Linux build, Xvfb)
 
-| Native qobiq (offline holat, Linux Xvfb) | Login ekrani (Linux zaxira rejim) | Media ruxsat sinovi |
+| Native login (API javobi bilan) | Native qobiq (offline holat) | Media ruxsat sinovi |
 |---|---|---|
-| ![](docs/screenshot-shell-offline.png) | ![](docs/screenshot-linux-online.png) | ![](docs/screenshot-media-test.png) |
+| ![](docs/screenshot-native-login.png) | ![](docs/screenshot-shell-offline.png) | ![](docs/screenshot-media-test.png) |
 
 Windows’dagi to‘liq qobiq (yon panel + panel yonma-yon) skrinshoti Windows kompyuterda olinishi kerak — Linux’da child-webview joylashuvi ishlamaydi.
 
@@ -146,7 +150,7 @@ cargo tauri build            # src-tauri\target\release\bundle\nsis\*.exe va msi
 
 ### Panel manzilini o‘zgartirish
 
-Kompilyatsiya vaqtida: `APTEKA_PANEL_URL=https://staging.example.uz docker/build.sh linux`
+Kompilyatsiya vaqtida: `APTEKA_PANEL_URL=https://staging.example.uz APTEKA_API_URL=https://api-staging.example.uz docker/build.sh linux`
 (yoki `cargo tauri build` oldidan shu env). Standart — `https://apteka.agrom24.uz`.
 
 ## O‘rnatish (Windows)

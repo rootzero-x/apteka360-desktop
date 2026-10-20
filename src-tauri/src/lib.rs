@@ -30,6 +30,12 @@ pub const PANEL_URL: &str = match option_env!("APTEKA_PANEL_URL") {
     None => "https://apteka.agrom24.uz",
 };
 
+/// API manzili (qobiqdagi native login shu yerga murojaat qiladi — panel webview konteksti orqali).
+pub const API_URL: &str = match option_env!("APTEKA_API_URL") {
+    Some(u) => u,
+    None => "https://api-apteka.agrom24.uz",
+};
+
 const WINDOW: &str = "main";
 const SHELL: &str = "shell";
 const PANEL: &str = "panel";
@@ -47,7 +53,17 @@ struct ClientInfo {
     device_header: String,
     hostname: String,
     panel_url: String,
+    api_url: String,
     platform: &'static str,
+    /// `APTEKA_SELFTEST=1` (runtime): qobiq login ko'prigini avtomatik sinaydi (faqat diagnostika).
+    selftest: bool,
+}
+
+#[derive(Serialize, Clone)]
+struct ApiResult {
+    id: String,
+    status: u16,
+    body: serde_json::Value,
 }
 
 #[derive(Serialize, Clone)]
@@ -81,7 +97,9 @@ fn client_info(app: &AppHandle) -> ClientInfo {
         hostname,
         version,
         panel_url: PANEL_URL.to_string(),
+        api_url: API_URL.to_string(),
         platform: std::env::consts::OS,
+        selftest: std::env::var("APTEKA_SELFTEST").map(|v| v == "1").unwrap_or(false),
     }
 }
 
@@ -272,6 +290,32 @@ fn handle_menu(app: &AppHandle, id: &str) {
     }
 }
 
+/// Native login: API so'rovi **panel webview konteksti** (apteka.agrom24.uz origin) orqali bajariladi —
+/// shunda httpOnly refresh-cookie web paneldagi kabi o'rnatiladi va panel sessiyani o'zi tiklaydi.
+/// Natija `api_result` buyrug'i orqali qaytib, qobiqqa `api` hodisasi sifatida yetkaziladi.
+#[tauri::command]
+fn panel_api(app: AppHandle, id: String, path: String, body: serde_json::Value) -> Result<(), String> {
+    if !path.starts_with("/v1/auth/") && path != "/v1/me" {
+        return Err("faqat auth yo'llari".into());
+    }
+    let js = format!(
+        r#"(function(){{var id={id},url={url},body={body};
+fetch(url,{{method:'POST',credentials:'include',headers:{{'Content-Type':'application/json'}},body:JSON.stringify(body)}})
+.then(function(r){{return r.text().then(function(t){{var b;try{{b=JSON.parse(t)}}catch(e){{b={{}}}}
+  window.__TAURI__.core.invoke('api_result',{{id:id,status:r.status,body:b}});}});}})
+.catch(function(e){{window.__TAURI__.core.invoke('api_result',{{id:id,status:0,body:{{error:'Server bilan aloqa yo‘q. Internetni tekshiring.',code:'unavailable'}}}});}});}})();"#,
+        id = serde_json::to_string(&id).map_err(|e| e.to_string())?,
+        url = serde_json::to_string(&format!("{}{}", API_URL.trim_end_matches('/'), path)).map_err(|e| e.to_string())?,
+        body = serde_json::to_string(&body).map_err(|e| e.to_string())?,
+    );
+    panel(&app)?.eval(js).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn api_result(app: AppHandle, id: String, status: u16, body: serde_json::Value) {
+    emit_shell(&app, "api", ApiResult { id, status, body });
+}
+
 /// Panel ichidagi init-skript `online`/`offline` hodisalarini xabar qiladi → qobiq offline ekranini ko'rsatadi.
 #[tauri::command]
 fn report_network(app: AppHandle, online: bool) {
@@ -379,7 +423,7 @@ pub fn run() {
             check_online, get_client_info, toggle_fullscreen, zoom_step,
             panel_navigate, panel_reload, panel_back, panel_forward, panel_eval_compact,
             set_panel_bounds, set_panel_visible, report_network,
-            get_prefs, set_pref, show_about, open_in_browser, quit_app, show_more_menu
+            get_prefs, set_pref, show_about, open_in_browser, quit_app, show_more_menu, panel_api, api_result
         ])
         .on_menu_event(|app, event| handle_menu(app, event.id().as_ref()));
 

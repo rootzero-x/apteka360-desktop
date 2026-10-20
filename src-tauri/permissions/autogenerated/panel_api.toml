@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-panel-api"
+description = "Enables the panel_api command without any pre-configured scope."
+commands.allow = ["panel_api"]
+
+[[permission]]
+identifier = "deny-panel-api"
+description = "Denies the panel_api command without any pre-configured scope."
+commands.deny = ["panel_api"]

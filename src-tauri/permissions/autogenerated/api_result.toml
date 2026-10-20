@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-api-result"
+description = "Enables the api_result command without any pre-configured scope."
+commands.allow = ["api_result"]
+
+[[permission]]
+identifier = "deny-api-result"
+description = "Denies the api_result command without any pre-configured scope."
+commands.deny = ["api_result"]
