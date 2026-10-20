@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Apteka 360</title>
 <link rel="stylesheet" href="app.css">
-<script>window.addEventListener('error',function(e){var t=document.getElementById('ov-loading-t');if(t)t.textContent='Ichki xato: '+(e.message||e)+' ('+(e.filename||'').split('/').pop()+':'+e.lineno+')';});
+<script>window.addEventListener('error',function(e){try{window.__TAURI__.core.invoke('debug_log',{msg:'JS error: '+e.message+' '+(e.filename||'').split('/').pop()+':'+e.lineno});}catch(x){}var t=document.getElementById('ov-loading-t');if(t)t.textContent='Ichki xato: '+(e.message||e)+' ('+(e.filename||'').split('/').pop()+':'+e.lineno+')';});
 window.addEventListener('unhandledrejection',function(e){var t=document.getElementById('ov-loading-t');if(t&&!window.Apteka_started)t.textContent='Ichki xato: '+(e.reason&&(e.reason.message||e.reason.error)||e.reason);});</script>
 </head>
 <body class="bare loading">

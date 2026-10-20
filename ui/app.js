@@ -146,6 +146,7 @@
   function can(id, role) {
     role = role || (S.me && S.me.role); var a = ACCESS[role];
     if (id === 'settings') return role === 'OWNER' || role === 'SUPER_ADMIN' || role === 'AUDITOR';
+    if (id === 'employee') id = 'employees';
     return a === '*' || (a || []).indexOf(id) >= 0;
   }
   var ROUTES = {}, ALL = [];
@@ -266,8 +267,10 @@
     var fn = Apteka.screens[it.id];
     if (!fn) { page.appendChild(h('div', { class: 'empty', text: 'Ekran topilmadi' })); return; }
     document.body.classList.add('loading');
+    dbg('render ' + it.id);
     Promise.resolve(fn(page, S.params || {}, { isCurrent: function () { return seq === renderSeq; } })).catch(function (e) {
       if (seq !== renderSeq || (e && e.silent)) return;
+      dbg('render error ' + S.route + ': ' + ((e && (e.error || e.message)) || e) + (e && e.stack ? ' @ ' + String(e.stack).split('\n')[1] : ''));
       clear(page); page.appendChild(errorView(e));
     }).then(function () { if (seq === renderSeq) document.body.classList.remove('loading'); });
   }
@@ -413,7 +416,7 @@
     function setBadge(id, n) { var b = ROUTES[id] && ROUTES[id].badge; if (!b) return; b.textContent = n > 99 ? '99+' : String(n); b.style.display = n ? '' : 'none'; }
     var jobs = [get('/v1/notifications').then(function (l) { setBadge('notifications', (l || []).filter(function (x) { return !x.readByMe && !x.read; }).length); }).catch(function () {})];
     if (can('approvals')) jobs.push(get('/v1/approvals').then(function (l) { setBadge('approvals', (l || []).filter(function (x) { return x.status === 'pending'; }).length); }).catch(function () {}));
-    if (can('ai')) jobs.push(get('/v1/aiEvents').then(function (l) { setBadge('ai', (l || []).filter(function (x) { return x.status === 'new' || x.status === 'pending' || x.status === 'review'; }).length); }).catch(function () {}));
+    if (can('ai')) jobs.push(get('/v1/aiEvents').then(function (l) { setBadge('ai', (l || []).filter(function (x) { return x.status === 'pending'; }).length); }).catch(function () {}));
     Promise.all(jobs).then(function () { badgeTimer = setTimeout(pollBadges, 60000); });
   }
 
@@ -571,7 +574,7 @@
     var wait = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
     (function loop(n) {
       if (S.loginShown && $('s-creds').classList.contains('show')) {
-        L.fill('owner@apteka360.uz', 'x'); $('b-login').click();
+        L.fill(((Apteka.info && Apteka.info.selftest_role) || 'owner') + '@apteka360.uz', 'x'); $('b-login').click();
         wait(1500).then(function () { $('f-otp').value = '123456'; $('b-otp').click(); return wait(1500); })
           .then(function () { if ($('s-device').classList.contains('show')) $('b-trust').click(); });
         return;

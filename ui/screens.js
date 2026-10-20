@@ -105,9 +105,11 @@
   A.screens.dashboard = function (page, params, ctx) {
     var me = A.state.me || {}, hr = new Date().getHours();
     var greet = (hr < 11 ? 'Xayrli tong' : hr < 18 ? 'Xayrli kun' : 'Xayrli kech') + ', ' + String(me.name || '').split(' ')[0];
-    return Promise.all([A.get('/v1/dashboard').catch(function (e) { return { __err: e }; }), A.branchesCached(), A.get('/v1/approvals').catch(function () { return []; })]).then(function (r) {
+    var opt = function (p) { return A.get(p).catch(function () { return null; }); };
+    return Promise.all([A.get('/v1/dashboard').catch(function (e) { return { __err: e }; }), A.branchesCached(), opt('/v1/approvals'),
+      A.can('suppliers') || A.can('payables') ? opt('/v1/suppliers') : null, opt('/v1/fomCashToday'), A.can('ai') ? opt('/v1/aiEvents') : null]).then(function (r) {
       guard(ctx);
-      var d = r[0], br = r[1] || [], ap = (r[2] || []).filter(function (a) { return a.status === 'pending'; });
+      var d = r[0], br = r[1] || [], ap = (r[2] || []).filter(function (a) { return a.status === 'pending'; }), sup = r[3] || [], fomToday = r[4] || {}, aiEv = r[5] || [];
       page.appendChild(head(greet, A.longDate() + ' · so‘nggi 30 kun', [refreshBtn()]));
       if (d.__err) {
         if (d.__err.status !== 403) throw d.__err;
@@ -115,10 +117,20 @@
         page.appendChild(quickLinks());
         return;
       }
-      if (!d.connected) page.appendChild(A.infobar('info', 'FOM ulanmagan.', 'Tushum va foyda FOM sinxronlash agenti ulangandan keyin ko‘rinadi.', h('a', { class: 'link', onclick: function () { linkTo('/fom'); }, text: 'FOM sozlamalari' })));
-      var K = { revenue: ['Tushum', 'chart'], grossProfit: ['Yalpi foyda', 'pl'], netProfit: ['Sof foyda', 'pl'], cash: ['Kassadagi pul', 'cash'], payroll: ['Oylik fondi', 'user'], expenses: ['Xarajatlar', 'wallet'], supplierDebt: ['Ta’minotchilarga qarz', 'truck'], payments7d: ['7 kunlik to‘lovlar', 'pay'] };
+      if (!d.connected) page.appendChild(A.infobar('info', 'FOM ulanmagan.', 'Tushum, foyda va kassa qoldig‘i FOM sinxronlash agenti ulangandan keyin ko‘rinadi.', A.can('fom') ? h('a', { class: 'link', onclick: function () { A.go('fom'); }, text: 'FOM integratsiya' }) : null));
+      var K = { revenue: ['Tushum', 'chart'], grossProfit: ['Yalpi foyda', 'pl'], netProfit: ['Sof foyda', 'pl'], cash: ['Kassadagi pul', 'cash'], payroll: ['Oylik fondi', 'user'], expenses: ['Harajatlar', 'wallet'], supplierDebt: ['Firmalarga qarz', 'truck'], payments7d: ['7 kunda to‘lanadi', 'pay'] };
+      // FOM'ga bog'liq qiymat 0 bo'lsa — boshqa haqiqiy manba yoki «FOM ulanmagan»
+      var supDebt = sup.reduce(function (a, x) { return a + (x.debt || 0); }, 0), supDue = sup.reduce(function (a, x) { return a + (x.dueSoon || 0) + (x.overdue || 0); }, 0), supOver = sup.reduce(function (a, x) { return a + (x.overdue || 0); }, 0);
+      var todayCash = Object.keys(fomToday).reduce(function (a, k) { var f = fomToday[k] || {}; return a + (f.naqd || 0); }, 0);
       var grid = h('div', { class: 'grid g4' });
-      (d.kpis || []).forEach(function (k) { var m = K[k.key] || [k.key, 'chart']; grid.appendChild(kpi(m[0], k.value, { icon: m[1], delta: k.deltaPct, spark: k.spark, src: k.source, foot: k.prev != null && k.prev !== 0 ? 'oldingi davr: ' + A.moneyShort(k.prev).v + ' ' + A.moneyShort(k.prev).u.replace(' so‘m', '') : '' })); });
+      (d.kpis || []).forEach(function (k) {
+        var m = K[k.key] || [k.key, 'chart'], val = k.value, foot = k.prev != null && k.prev !== 0 ? 'oldingi davr: ' + A.moneyShort(k.prev).v + ' ' + A.moneyShort(k.prev).u.replace(' so‘m', '') : '', src = k.source;
+        if (!val && k.key === 'supplierDebt' && supDebt) { val = supDebt; src = 'FIRMALAR'; foot = 'muddati o‘tgan: ' + A.moneyShort(supOver).v + ' ' + A.moneyShort(supOver).u; }
+        else if (!val && k.key === 'payments7d' && supDue) { val = supDue; src = 'FIRMALAR'; foot = 'muddati o‘tgan + yaqin to‘lovlar'; }
+        else if (!val && k.key === 'cash' && todayCash) { val = todayCash; src = 'FOM BUGUN'; foot = 'bugungi naqd tushum (kassalar)'; }
+        var noData = !val && src === 'FOM' && !d.connected;
+        grid.appendChild(kpi(m[0], noData ? { v: '—', u: '' } : val, { icon: m[1], delta: noData ? null : k.deltaPct, spark: noData ? null : k.spark, src: src, foot: noData ? 'FOM ulanmagan' : foot }));
+      });
       page.appendChild(grid);
 
       var series = (d.revenueSeries || []).map(function (p) { var dt = new Date(p.date); return { l: dt.getDate() + '.' + ('0' + (dt.getMonth() + 1)).slice(-2), v: p.actual || 0 }; });
@@ -152,18 +164,32 @@
       page.appendChild(card(null, null, h('div', { class: 'table-wrap' }, h('table', { class: 'dg' },
         h('thead', null, h('tr', null, ['Filial', 'Mudir', 'Tushum', 'Kechaga nisbatan', 'Holat', 'FOM', 'Kameralar'].map(function (t, i) { return h('th', { class: i === 2 || i === 3 || i === 6 ? 'r' : '', text: t }); }))), tb))));
 
+      var mini = h('div', { class: 'grid g2', style: { marginTop: '12px' } });
+      if (A.can('approvals')) {
+        var apBox = h('div'); ap.slice(0, 5).forEach(function (a) { apBox.appendChild(h('div', { class: 'list-item', onclick: function () { A.go('approvals', { id: a.id }); } }, h('div', { style: { minWidth: '0' } }, h('div', { class: 't', text: a.title }), h('div', { class: 's', text: a.requester + ' · ' + A.branchName(a.branchId) })), h('div', { class: 'meta' }, h('div', { text: a.amount != null ? A.moneyShort(a.amount).v + ' ' + A.moneyShort(a.amount).u : '' })))); });
+        if (!ap.length) apBox.appendChild(empty('Kutilayotgan tasdiq yo‘q', 'ok'));
+        mini.appendChild(card('Tasdiqlar', h('a', { class: 'link', onclick: function () { A.go('approvals'); }, text: 'Hammasi' }), apBox));
+      }
+      if (A.can('ai')) {
+        var aiBox = h('div'), open = aiEv.filter(function (x) { return x.status === 'pending' || x.status === 'new' || x.status === 'review'; });
+        open.slice(0, 5).forEach(function (x) { aiBox.appendChild(h('div', { class: 'list-item', onclick: function () { A.go('ai', { id: x.id }); } }, h('div', { style: { minWidth: '0' } }, h('div', { class: 't', text: x.label || x.code || 'AI hodisa' }), h('div', { class: 's', text: [x.camera, A.branchName(x.branchId), x.date + ' ' + x.time].filter(Boolean).join(' · ') })), h('div', { class: 'meta' }, x.conf != null ? pill(x.priority === 'yuqori' ? 'warn' : 'info', x.conf + '%') : null))); });
+        if (!open.length) aiBox.appendChild(empty('Ko‘rib chiqiladigan AI hodisa yo‘q', 'ok'));
+        mini.appendChild(card('AI hodisalar', h('a', { class: 'link', onclick: function () { A.go('ai'); }, text: 'Review navbati' }), aiBox));
+      }
+      if (mini.children.length) page.appendChild(mini);
+
       if (d.runway) {
         page.appendChild(h('div', { class: 'section-title', text: 'Pul zaxirasi prognozi' }));
         page.appendChild(h('div', { class: 'grid g3' },
-          kpi('30 kundan keyin', d.runway.d30, { icon: 'forecast' }), kpi('60 kundan keyin', d.runway.d60, { icon: 'forecast' }),
-          kpi('Eng past nuqta', d.runway.lowest ? d.runway.lowest.value : null, { icon: 'warn', foot: d.runway.lowest ? d.runway.lowest.date : '' })));
+          kpi('30 kundan keyin', d.connected ? d.runway.d30 : { v: '—', u: '' }, { icon: 'forecast', foot: d.connected ? '' : 'FOM ulanmagan' }), kpi('60 kundan keyin', d.connected ? d.runway.d60 : { v: '—', u: '' }, { icon: 'forecast', foot: d.connected ? '' : 'FOM ulanmagan' }),
+          kpi('Eng past nuqta', d.connected && d.runway.lowest ? d.runway.lowest.value : { v: '—', u: '' }, { icon: 'warn', foot: d.connected && d.runway.lowest ? d.runway.lowest.date : 'FOM ulanmagan' })));
       }
     });
   };
   function quickLinks() {
     var g = h('div', { class: 'grid g3' });
-    ['cash', 'cameras', 'approvals', 'notifications', 'employees', 'audit'].forEach(function (id) {
-      var r = A.routes[id]; if (!r) return;
+    ['cash', 'cameras', 'approvals', 'notifications', 'employees', 'audit', 'ai', 'schedule', 'attendance', 'profile'].forEach(function (id) {
+      var r = A.routes[id]; if (!r || !A.can(id)) return;
       g.appendChild(h('button', { class: 'card pad', style: { textAlign: 'left', display: 'flex', gap: '12px', alignItems: 'center' }, onclick: function () { A.go(id); } }, icon(r.icon, 'lg'), h('b', { text: r.label })));
     });
     return g;

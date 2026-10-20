@@ -63,6 +63,7 @@ struct ClientInfo {
     selftest: bool,
     /// `APTEKA_SELFTEST_ROUTE` — diagnostika: kirgandan keyin ochiladigan ekran.
     selftest_route: Option<String>,
+    selftest_role: Option<String>,
 }
 
 #[derive(Serialize, Clone)]
@@ -108,6 +109,7 @@ fn client_info(app: &AppHandle) -> ClientInfo {
         platform: std::env::consts::OS,
         selftest: std::env::var("APTEKA_SELFTEST").map(|v| v == "1").unwrap_or(false),
         selftest_route: std::env::var("APTEKA_SELFTEST_ROUTE").ok(),
+        selftest_role: std::env::var("APTEKA_SELFTEST_ROLE").ok(),
     }
 }
 

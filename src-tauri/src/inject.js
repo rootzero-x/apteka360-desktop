@@ -4,7 +4,7 @@
   if (window.__APTEKA_DESKTOP__) return;
   var CLIENT = '__CLIENT_HEADER__', DEVICE = '__DEVICE_HEADER__', PANEL = '__PANEL_URL__', VERSION = '__APP_VERSION__';
   var isShell = location.protocol === 'tauri:' || location.hostname === 'tauri.localhost' || location.protocol === 'file:';
-  window.__APTEKA_DESKTOP__ = { version: VERSION, client: CLIENT, device: DEVICE, panel: PANEL, shell: isShell };
+  window.__APTEKA_DESKTOP__ = { version: VERSION, client: CLIENT, device: DEVICE, panel: PANEL, api_url: '__API_URL__', shell: isShell };
 
   function invoke(cmd, args) {
     try { if (window.__TAURI__ && window.__TAURI__.core) return window.__TAURI__.core.invoke(cmd, args || {}); } catch (e) {}
