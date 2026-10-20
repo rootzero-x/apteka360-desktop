@@ -650,4 +650,86 @@
       paint();
     });
   };
+  // ───────────── Umumiy UI yordamchilari (boshqa ekran fayllari uchun: ui/screens/*.js) ─────────────
+  /** Jadval. cols: [{ t: 'Sarlavha', k: 'maydon' | render: fn(row) → Node|string, r: true (o'ngga), w: '120px', clip: true }] */
+  function table(cols, rows, opts) {
+    opts = opts || {};
+    var tb = h('tbody');
+    (rows || []).forEach(function (row) {
+      var tr = h('tr', { class: opts.onRow ? 'click' : '', onclick: opts.onRow ? function () { opts.onRow(row, tr); } : null });
+      cols.forEach(function (c) {
+        var v = c.render ? c.render(row) : row[c.k];
+        var td = h('td', { class: (c.r ? 'r ' : '') + (c.muted ? 'muted ' : '') + (c.clip ? 'clip' : ''), style: c.w ? { width: c.w } : null, title: c.clip && typeof v === 'string' ? v : null });
+        if (v != null && v.nodeType) td.appendChild(v); else td.textContent = v == null || v === '' ? '—' : String(v);
+        tr.appendChild(td);
+      });
+      tb.appendChild(tr);
+    });
+    if (!rows || !rows.length) tb.appendChild(h('tr', null, h('td', { colspan: String(cols.length) }, empty(opts.empty || 'Ma’lumot yo‘q', opts.emptyIcon || 'inbox'))));
+    var t = h('table', { class: 'dg' }, h('thead', null, h('tr', null, cols.map(function (c) { return h('th', { class: c.r ? 'r' : '', text: c.t, style: c.w ? { width: c.w } : null }); }))), tb);
+    var wrap = h('div', { class: 'table-wrap' }, t);
+    return opts.bare ? wrap : card(opts.title || null, opts.more || null, wrap);
+  }
+  /** Tablar (Fluent Pivot). items: [[id, label]] */
+  function tabs(items, value, onchange) {
+    var box = h('div', { class: 'pivot' });
+    items.forEach(function (it) {
+      box.appendChild(h('button', { class: it[0] === value ? 'on' : '', onclick: function () { Array.prototype.forEach.call(box.children, function (b) { b.classList.remove('on'); }); this.classList.add('on'); onchange(it[0]); } }, it[1]));
+    });
+    return box;
+  }
+  function field(label, control, hint) { return h('div', { class: 'field' }, h('label', { text: label }), control, hint ? h('div', { class: 'hint', text: hint }) : null); }
+  function input(opts) { opts = opts || {}; var i = h('input', Object.assign({ class: 'tb' + (opts.num ? ' num' : ''), spellcheck: 'false' }, opts.attrs || {})); if (opts.value != null) i.value = opts.value; if (opts.placeholder) i.placeholder = opts.placeholder; if (opts.type) i.type = opts.type; return i; }
+  /** So'm kiritish maydoni (1 234 567 formatida); .num() — qiymat */
+  function moneyInput(value) {
+    var i = h('input', { class: 'tb num', inputmode: 'numeric', placeholder: '0' });
+    function fmt() { var n = parseInt(i.value.replace(/\D/g, ''), 10) || 0; i.value = n ? A.num(n) : ''; }
+    i.addEventListener('input', fmt); if (value) { i.value = String(value); fmt(); }
+    i.num = function () { return parseInt(i.value.replace(/\D/g, ''), 10) || 0; };
+    return i;
+  }
+  function kvList(rows) { var kv = h('div', { class: 'kv' }); rows.forEach(function (r) { if (r == null || r[1] == null || r[1] === '') return; kv.appendChild(h('div', { text: r[0] })); var v = r[1]; kv.appendChild(v && v.nodeType ? h('div', null, v) : h('div', { text: String(v) })); }); return kv; }
+  /** Tasdiq dialogi: confirm('Sarlavha', 'Matn', 'Ha') → Promise<boolean> */
+  function confirm(title, text, primary) { return A.dialog({ title: title, body: h('p', { class: 'note', text: text }), primary: primary || 'Ha' }); }
+  /** Izoh/sabab so'raydigan dialog → Promise<string|false> */
+  function prompt(title, label, opts) {
+    opts = opts || {};
+    var ta = h('textarea', { class: 'tb', placeholder: opts.placeholder || '' }), er = h('div', { class: 'err' });
+    if (opts.value) ta.value = opts.value;
+    return A.dialog({ title: title, primary: opts.primary || 'Saqlash', body: h('div', null, opts.text ? h('p', { class: 'note', text: opts.text }) : null, field(label, ta), er),
+      onPrimary: function () { var v = ta.value.trim(); if (opts.required && !v) { er.textContent = 'Majburiy maydon.'; return false; } return v || ''; } });
+  }
+  /** Buyruqni bajarish + toast; xatoni ko'rsatadi. run('cmd', input, 'Bajarildi') → Promise */
+  function run(cmd, input, okText) {
+    return A.cmd(cmd, input).then(function (r) { if (okText) A.toast('ok', okText); return r; })
+      .catch(function (e) { A.toast('crit', 'Bajarilmadi', e.error || String(e)); throw e; });
+  }
+  function fmtDate(v) {
+    if (!v) return '—'; var d = new Date(v); if (isNaN(d)) return String(v);
+    return ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '.' + d.getFullYear();
+  }
+  function fmtDateTime(v) { if (!v) return '—'; var d = new Date(v); if (isNaN(d)) return String(v); return fmtDate(v) + ' ' + A.hhmm(d); }
+  function isoDay(offset) { var d = new Date(Date.now() - (offset || 0) * 86400000); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  /** Faqat o'qish (AUDITOR) bo'lsa tugmani o'chirish */
+  function ro(btn) { if (A.readOnly()) { btn.disabled = true; btn.title = 'Auditor rejimi — faqat o‘qish'; } return btn; }
+  function branchOptions(all) { return (all ? [['', all === true ? 'Barcha filiallar' : all]] : []).concat((A.state.branches || []).map(function (b) { return [b.id, b.short || b.name]; })); }
+  function hbar(items, opts) { // gorizontal ustunli diagramma: [{l, v}]
+    opts = opts || {}; var mx = Math.max.apply(null, items.map(function (x) { return Math.abs(x.v); }).concat([1])), box = h('div', { style: { padding: '8px 20px 16px' } });
+    items.forEach(function (x) {
+      box.appendChild(h('div', { style: { display: 'grid', gridTemplateColumns: '160px 1fr 120px', gap: '12px', alignItems: 'center', padding: '5px 0' } },
+        h('span', { text: x.l, style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }),
+        h('div', { class: 'bar' + (x.v < 0 ? ' crit' : ''), style: { height: '8px' } }, h('i', { style: { width: Math.round(Math.abs(x.v) / mx * 100) + '%' } })),
+        h('span', { class: 'r', style: { textAlign: 'right', fontVariantNumeric: 'tabular-nums' }, text: opts.fmt ? opts.fmt(x.v) : A.num(x.v) })));
+    });
+    if (!items.length) box.appendChild(empty('Ma’lumot yo‘q'));
+    return box;
+  }
+
+  A.ui = {
+    head: head, refreshBtn: refreshBtn, card: card, empty: empty, pill: pill, seg: seg, select: select, search: search, svg: svg,
+    spark: spark, areaChart: areaChart, bars: bars, hbar: hbar, deltaBadge: deltaBadge, kpi: kpi, levelKind: levelKind, linkTo: linkTo, guard: guard,
+    viewer: viewer, pushToTalk: pushToTalk, table: table, tabs: tabs, field: field, input: input, moneyInput: moneyInput, kvList: kvList,
+    confirm: confirm, prompt: prompt, run: run, fmtDate: fmtDate, fmtDateTime: fmtDateTime, isoDay: isoDay, ro: ro, branchOptions: branchOptions,
+    empDialog: empDialog, apDetail: apDetail
+  };
 })();

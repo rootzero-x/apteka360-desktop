@@ -39,6 +39,7 @@
     "allow-panel-api",
     "allow-api",
     "allow-has-token",
-    "allow-debug-log"
+    "allow-debug-log",
+    "allow-open-external"
   ]
 }

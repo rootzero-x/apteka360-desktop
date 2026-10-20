@@ -84,53 +84,88 @@
 
   // ───────────── Navigatsiya xaritasi ─────────────
   // native: true — ilovaning o'z ekrani; aks holda web paneldan ochiladi.
+  // Web panel bilan bir xil tuzilma (apteka360-frontend-web/src/lib/nav.tsx). Barcha bo'limlar native.
   var NAV = [
-    { group: 'Asosiy' },
-    { id: 'dashboard', path: '/dashboard', label: 'Bosh sahifa', icon: 'home', native: true, alias: ['/'] },
-    { id: 'branches', path: '/branches', label: 'Filiallar', icon: 'branch', native: true },
-    { id: 'employees', path: '/employees', label: 'Xodimlar', icon: 'people', native: true },
-    { id: 'attendance', path: '/attendance', label: 'Davomat', icon: 'clock' },
-    { id: 'schedule', path: '/schedule', label: 'Ish jadvali', icon: 'cal' },
-    { group: 'Moliya' },
-    { id: 'cash', path: '/cash', label: 'Kassa', icon: 'cash', native: true },
-    { id: 'fom', path: '/fom', label: 'FOM hisobot', icon: 'chart' },
-    { id: 'expenses', path: '/expenses', label: 'Xarajatlar', icon: 'wallet' },
-    { id: 'tolovlar', path: '/tolovlar', label: 'To‘lovlar', icon: 'pay' },
-    { id: 'payroll', path: '/payroll', label: 'Oylik maosh', icon: 'user' },
-    { id: 'pnl', path: '/pnl', label: 'Foyda va zarar', icon: 'pl' },
+    { id: 'dashboard', path: '/dashboard', label: 'Bosh sahifa', icon: 'home', alias: ['/'] },
+    { group: 'Operatsiyalar' },
+    { id: 'branches', path: '/branches', label: 'Filiallar', icon: 'branch' },
+    { id: 'expiry', path: '/sroklar', label: 'Sroklar', icon: 'expire' },
+    { id: 'cash', path: '/cash', label: 'Kassa yopilishi', icon: 'cash' },
+    { id: 'expenses', path: '/expenses', label: 'Harajatlar', icon: 'wallet' },
     { id: 'cashflow', path: '/cashflow', label: 'Pul oqimi', icon: 'flow' },
-    { id: 'soliq', path: '/soliq', label: 'Soliq', icon: 'tax' },
-    { id: 'forecast', path: '/forecast', label: 'Prognoz', icon: 'forecast' },
-    { group: 'Nazorat' },
-    { id: 'cameras', path: '/cameras', label: 'Kameralar', icon: 'cam', native: true },
+    { group: 'HR' },
+    { id: 'employees', path: '/employees', label: 'Xodimlar', icon: 'people' },
+    { id: 'schedule', path: '/schedule', label: 'Grafiklar', icon: 'cal' },
+    { id: 'attendance', path: '/attendance', label: 'Davomat', icon: 'clock' },
+    { id: 'live', path: '/live', label: 'Jonli filial', icon: 'live' },
+    { id: 'payroll', path: '/payroll', label: 'Oylik (Payroll)', icon: 'user' },
+    { id: 'payrollRules', path: '/payroll/rules', label: 'Oylik shablon va formula', icon: 'tax' },
+    { group: 'Firmalar' },
+    { id: 'suppliers', path: '/suppliers', label: 'Firmalar va to‘lovlar', icon: 'truck' },
+    { id: 'payables', path: '/tolovlar', label: 'To‘lov kalendari', icon: 'pay' },
+    { group: 'Vrachlar' },
+    { id: 'doctors', path: '/doctors', label: 'Vrachlar va ROI', icon: 'doctor' },
+    { group: 'AI nazorat' },
+    { id: 'ai', path: '/ai', label: 'Review navbati', icon: 'ai' },
     { id: 'videowall', path: '/videowall', label: 'Video devor', icon: 'wall' },
-    { id: 'ai', path: '/ai', label: 'AI hodisalar', icon: 'ai' },
-    { id: 'approvals', path: '/approvals', label: 'Tasdiqlashlar', icon: 'check', native: true },
-    { id: 'audit', path: '/audit', label: 'Audit jurnali', icon: 'audit', native: true },
-    { id: 'sroklar', path: '/sroklar', label: 'Muddatlar', icon: 'expire' },
-    { group: 'Ma’lumotnoma' },
-    { id: 'suppliers', path: '/suppliers', label: 'Ta’minotchilar', icon: 'truck' },
-    { id: 'doctors', path: '/doctors', label: 'Shifokorlar', icon: 'doctor' },
+    { id: 'cameras', path: '/cameras', label: 'Kameralar va zonalar', icon: 'cam' },
+    { group: 'Analitika' },
+    { id: 'pnl', path: '/pnl', label: 'P&L', icon: 'pl' },
+    { id: 'analytics', path: '/analytics', label: 'Analitika', icon: 'chart' },
+    { id: 'forecast', path: '/forecast', label: 'Prognoz', icon: 'forecast' },
     { id: 'reports', path: '/reports', label: 'Hisobotlar', icon: 'report' },
-    { id: 'analytics', path: '/analytics', label: 'Analitika', icon: 'chart' }
-  ];
-  var FOOT = [
-    { id: 'notifications', path: '/notifications', label: 'Bildirishnomalar', icon: 'bell', native: true },
+    { id: 'tax', path: '/soliq', label: 'Soliq', icon: 'tax' },
+    { group: 'Boshqaruv' },
+    { id: 'approvals', path: '/approvals', label: 'Tasdiqlar', icon: 'check' },
+    { id: 'notifications', path: '/notifications', label: 'Bildirishlar', icon: 'bell' },
+    { id: 'audit', path: '/audit', label: 'Audit jurnali', icon: 'audit' },
+    { group: 'Tizim' },
+    { id: 'fom', path: '/fom', label: 'FOM integratsiya', icon: 'refresh' },
+    { id: 'health', path: '/health', label: 'Tizim holati', icon: 'health' },
+    { id: 'users', path: '/users', label: 'Foydalanuvchilar', icon: 'user' },
+    { id: 'roles', path: '/roles', label: 'Rollar va ruxsatlar', icon: 'key' },
+    { id: 'modules', path: '/modules', label: 'Modullar', icon: 'module' },
+    { id: 'aiSettings', path: '/ai-settings', label: 'AI sozlamalari', icon: 'ai' },
     { id: 'settings', path: '/settings', label: 'Sozlamalar', icon: 'gear' }
   ];
+  var FOOT = [
+    { id: 'profile', path: '/settings?tab=profil', label: 'Profil', icon: 'user' }
+  ];
+  // Rollar → ko'rinadigan ekranlar (packages/core/src/roles.ts ACCESS + web nav.tsx qo'shimchalari)
+  var ACCESS = {
+    OWNER: '*',
+    SUPER_ADMIN: ['branches', 'employees', 'ai', 'videowall', 'cameras', 'notifications', 'audit', 'fom', 'health', 'users', 'roles', 'settings', 'profile', 'modules', 'aiSettings', 'tax', 'expiry', 'payables'],
+    FINANCE: ['payrollRules', 'dashboard', 'branches', 'cash', 'expenses', 'cashflow', 'payroll', 'suppliers', 'doctors', 'pnl', 'analytics', 'forecast', 'approvals', 'notifications', 'reports', 'profile', 'employees', 'tax', 'expiry', 'payables'],
+    MANAGER: ['dashboard', 'branches', 'cash', 'expenses', 'employees', 'schedule', 'attendance', 'live', 'payroll', 'ai', 'videowall', 'approvals', 'notifications', 'profile', 'expiry'],
+    HR: ['employees', 'schedule', 'attendance', 'approvals', 'notifications', 'profile', 'branches'],
+    OPERATOR: ['ai', 'videowall', 'cameras', 'notifications', 'profile'],
+    EMPLOYEE: ['profile'],
+    AUDITOR: ['payrollRules', 'cashflow', 'forecast', 'fom', 'health', 'users', 'roles', 'attendance', 'schedule', 'dashboard', 'branches', 'employees', 'cash', 'expenses', 'payroll', 'suppliers', 'ai', 'approvals', 'notifications', 'audit', 'pnl', 'analytics', 'reports', 'profile', 'doctors', 'modules', 'aiSettings', 'tax', 'expiry', 'payables']
+  };
+  var HOME = { OWNER: 'dashboard', SUPER_ADMIN: 'branches', FINANCE: 'dashboard', MANAGER: 'dashboard', HR: 'employees', OPERATOR: 'ai', EMPLOYEE: 'profile', AUDITOR: 'audit' };
+  function can(id, role) {
+    role = role || (S.me && S.me.role); var a = ACCESS[role];
+    if (id === 'settings') return role === 'OWNER' || role === 'SUPER_ADMIN' || role === 'AUDITOR';
+    return a === '*' || (a || []).indexOf(id) >= 0;
+  }
   var ROUTES = {}, ALL = [];
   function renderNav() {
     var host = clear($('navlist')), foot = clear($('navfoot')), g = 'Apteka 360';
     function item(it, parent) {
       it.group_label = g; ROUTES[it.id] = it; ALL.push(it);
+      it.native = true;
       var b = h('button', { class: 'nav-item', title: it.label, onclick: function () { go(it.id); } },
-        icon(it.icon), h('span', { class: 'lbl', text: it.label }),
-        it.native ? null : icon('ext', 'ext'));
-      if (it.id === 'notifications') { it.badge = h('span', { class: 'badge', style: { display: 'none' } }); b.insertBefore(it.badge, b.lastChild && b.lastChild.nodeName === 'svg' && !it.native ? b.lastChild : null); }
+        icon(it.icon), h('span', { class: 'lbl', text: it.label }));
+      if (it.id === 'notifications' || it.id === 'approvals' || it.id === 'ai') { it.badge = h('span', { class: 'badge', style: { display: 'none' } }); b.appendChild(it.badge); }
       it.el = b; parent.appendChild(b);
     }
-    NAV.forEach(function (it) { if (it.group) { g = it.group; host.appendChild(h('div', { class: 'nav-group', text: it.group })); } else item(it, host); });
-    g = 'Tizim'; FOOT.forEach(function (it) { item(it, foot); });
+    var grpEl = null;
+    NAV.forEach(function (it) { if (it.group) { g = it.group; grpEl = h('div', { class: 'nav-group', text: it.group }); grpEl._items = []; host.appendChild(grpEl); it.el = grpEl; } else { item(it, host); it.grp = grpEl; if (grpEl) grpEl._items.push(it); } });
+    g = 'Hisob'; FOOT.forEach(function (it) { item(it, foot); });
+  }
+  function applyRole() {
+    ALL.forEach(function (it) { it.allowed = !S.me || can(it.id); it.el.style.display = it.allowed ? '' : 'none'; });
+    document.querySelectorAll('#navlist .nav-group').forEach(function (g) { g.style.display = (g._items || []).some(function (it) { return it.allowed; }) ? '' : 'none'; });
   }
   function routeOfPath(path) {
     var found = null;
@@ -204,6 +239,7 @@
   function go(id, params, opts) {
     opts = opts || {};
     var it = ROUTES[id]; if (!it) return;
+    if (S.me && !can(id)) { toast('info', 'Ruxsat yo‘q', 'Bu bo‘lim sizning rolingiz uchun yopiq.'); return; }
     if (!opts.nohist && S.route && (S.route !== id || JSON.stringify(S.params) !== JSON.stringify(params || null))) { S.hist.push({ id: S.route, params: S.params }); S.fwd = []; }
     S.route = id; S.params = params || null;
     ALL.forEach(function (x) { x.el.classList.toggle('active', x === it); });
@@ -311,7 +347,7 @@
     if (S.authed) return; S.authed = true; S.loginShown = false;
     overlay('ov-loading'); $('ov-loading-t').textContent = 'Ma’lumotlar yuklanmoqda…';
     Promise.all([get('/v1/me'), branchesCached()]).then(function (r) {
-      S.me = r[0]; paintAccount();
+      S.me = r[0]; paintAccount(); applyRole();
       overlay(null);
       var last = 'dashboard'; try { last = localStorage.getItem('last-route') || 'dashboard'; } catch (e) {}
       var act = null;
@@ -323,7 +359,7 @@
         dbg('selftest act "' + act + '" found=' + !!b); if (b) b.click();
         if (confirm) setTimeout(function () { var p = document.querySelector('#dlg .foot .btn.accent'); dbg('selftest confirm ' + !!p); if (p) p.click(); }, 1200);
       }, 4000);
-      if (!ROUTES[last] || !ROUTES[last].native) last = 'dashboard';
+      if (!ROUTES[last] || !can(last)) last = HOME[S.me.role] || 'profile';
       S.hist = []; S.fwd = []; S.route = null;
       go(last, null, { nohist: true });
       pollBadges();
@@ -374,10 +410,11 @@
   function pollBadges() {
     clearTimeout(badgeTimer);
     if (!S.authed) return;
-    get('/v1/notifications').then(function (list) {
-      var n = (list || []).filter(function (x) { return !x.readByMe && !x.read; }).length, b = ROUTES.notifications.badge;
-      b.textContent = n > 99 ? '99+' : String(n); b.style.display = n ? '' : 'none';
-    }).catch(function () {}).then(function () { badgeTimer = setTimeout(pollBadges, 60000); });
+    function setBadge(id, n) { var b = ROUTES[id] && ROUTES[id].badge; if (!b) return; b.textContent = n > 99 ? '99+' : String(n); b.style.display = n ? '' : 'none'; }
+    var jobs = [get('/v1/notifications').then(function (l) { setBadge('notifications', (l || []).filter(function (x) { return !x.readByMe && !x.read; }).length); }).catch(function () {})];
+    if (can('approvals')) jobs.push(get('/v1/approvals').then(function (l) { setBadge('approvals', (l || []).filter(function (x) { return x.status === 'pending'; }).length); }).catch(function () {}));
+    if (can('ai')) jobs.push(get('/v1/aiEvents').then(function (l) { setBadge('ai', (l || []).filter(function (x) { return x.status === 'new' || x.status === 'pending' || x.status === 'review'; }).length); }).catch(function () {}));
+    Promise.all(jobs).then(function () { badgeTimer = setTimeout(pollBadges, 60000); });
   }
 
   // ───────────── Native login ─────────────
@@ -474,7 +511,7 @@
       if (c && (k === 'b' || k === 'B')) { e.preventDefault(); $('burger').click(); }
       else if (c && (k === 'q' || k === 'Q')) { e.preventDefault(); invoke('quit_app'); }
       else if (c && (k === 'f' || k === 'F') && !document.body.classList.contains('bare')) { e.preventDefault(); $('nav-q').focus(); }
-      else if (e.altKey && k === 'Home') { e.preventDefault(); if (S.authed) go('dashboard'); }
+      else if (e.altKey && k === 'Home') { e.preventDefault(); if (S.authed) go(HOME[S.me.role] || 'profile'); }
       else if (e.altKey && k === 'ArrowLeft') { e.preventDefault(); back(); }
       else if (e.altKey && k === 'ArrowRight') { e.preventDefault(); forward(); }
       else if (k === 'F5' || (c && (k === 'r' || k === 'R'))) { e.preventDefault(); $('reload').click(); }
@@ -507,9 +544,9 @@
       ev.listen('prefs', function (e) { S.prefs = e.payload || S.prefs; });
       ev.listen('api', function (e) { var r = e.payload || {}; var cb = pending[r.id]; if (cb) { delete pending[r.id]; cb(r); } });
       ev.listen('menu', function (e) {
-        if (e.payload === 'compact') { S.compact = !S.compact; try { localStorage.setItem('panel-compact', S.compact ? '1' : '0'); } catch (x) {} invoke('panel_eval_compact', { on: S.compact }).catch(function () {}); }
+        if (e.payload === 'compact' && false) { S.compact = !S.compact; try { localStorage.setItem('panel-compact', S.compact ? '1' : '0'); } catch (x) {} invoke('panel_eval_compact', { on: S.compact }).catch(function () {}); }
         if (e.payload === 'logout') { if (S.authed) logout(); }
-        if (e.payload === 'native-home') { if (S.authed) go('dashboard'); }
+        if (e.payload === 'native-home') { if (S.authed) go(HOME[S.me.role] || 'profile'); }
       });
     }
     invoke('get_prefs').then(function (p) { S.prefs = p; }).catch(function () {});
@@ -547,6 +584,8 @@
     start: start, h: h, add: add, clear: clear, icon: icon, invoke: invoke, api: api, get: get, cmd: cmd,
     money: money, moneyShort: moneyShort, num: num, pct: pct, initials: initials, uuid: uuid, longDate: longDate, hhmm: hhmm,
     infobar: infobar, errorView: errorView, dialog: dialog, toast: toast, go: go, render: render, branchesCached: branchesCached, branchName: branchName,
-    state: S, routes: ROUTES, screens: {}, _dispose: null
+    state: S, routes: ROUTES, screens: {}, _dispose: null, can: can,
+    role: function () { return S.me && S.me.role; }, readOnly: function () { return !!S.me && S.me.role === 'AUDITOR'; },
+    openExternal: function (url) { return invoke('open_external', { url: url }); }
   };
 })();

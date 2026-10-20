@@ -383,7 +383,10 @@ async fn api(
     let mut req = match method.as_str() {
         "GET" => client.get(&url),
         "POST" => client.post(&url),
-        _ => return Err("faqat GET/POST".into()),
+        "PUT" => client.put(&url),
+        "PATCH" => client.patch(&url),
+        "DELETE" => client.delete(&url),
+        _ => return Err("noma'lum HTTP metod".into()),
     }
     .header("X-Client", &info.client_header)
     .header("X-Client-Device", &info.device_header);
@@ -466,6 +469,17 @@ fn open_in_browser(app: AppHandle) -> Result<(), String> {
     app.opener().open_url(PANEL_URL, None::<&str>).map_err(|e| e.to_string())
 }
 
+/// API serveridagi faylni (masalan imzolangan hisobot havolasi) tizim brauzerida ochish — faqat API/panel domeni.
+#[tauri::command]
+fn open_external(app: AppHandle, url: String) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    let u = Url::parse(&url).map_err(|e| e.to_string())?;
+    let api_host = Url::parse(API_URL).ok().and_then(|x| x.host_str().map(str::to_owned));
+    let ok = is_panel_origin(&u) || (u.host_str().map(str::to_owned) == api_host && api_host.is_some());
+    if !ok { return Err("ruxsat etilmagan manzil".into()); }
+    app.opener().open_url(url, None::<&str>).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 fn quit_app(app: AppHandle) {
     app.exit(0);
@@ -527,7 +541,7 @@ pub fn run() {
             check_online, get_client_info, toggle_fullscreen, zoom_step,
             panel_navigate, panel_reload, panel_back, panel_forward, panel_eval_compact,
             set_panel_bounds, set_panel_visible, report_network,
-            get_prefs, set_pref, show_about, open_in_browser, quit_app, show_more_menu, panel_api, api_result, report_token, has_token, api, shell_home, debug_log
+            get_prefs, set_pref, show_about, open_in_browser, quit_app, show_more_menu, panel_api, api_result, report_token, has_token, api, shell_home, debug_log, open_external
         ])
         .on_menu_event(|app, event| handle_menu(app, event.id().as_ref()));
 
