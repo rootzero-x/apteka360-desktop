@@ -17,21 +17,21 @@ kam ishlatiladigan bo‘limlar hozircha web paneldan (`https://apteka.agrom24.uz
 
 ## Native ekranlar
 
-| Ekran | Nima qiladi | API |
-|---|---|---|
-| **Kirish** | login/parol → Telegram/SMS kod → yangi qurilmani tasdiqlash; parolni tiklash | `/v1/auth/*` |
-| **Bosh sahifa** | salomlashish, KPI kartalari (tushum, foyda, kassa, oylik fondi, xarajatlar… + sparkline), 30 kunlik tushum grafigi, ogohlantirishlar, filiallar jadvali, pul zaxirasi prognozi | `/v1/dashboard`, `/v1/branches`, `/v1/approvals` |
-| **Filiallar** | ro‘yxat + tafsilot: tushum (kechaga nisbatan), yalpi foyda, xarajat limiti, smena, kameralar, tashrif, konversiya, 30 kunlik grafik | `/v1/branches` |
-| **Xodimlar** | jadval, qidiruv, filial/holat filtri, xodim kartasi (oylik maydonlari rolga qarab) | `/v1/employees` |
-| **Kassa** | FOM bo‘yicha bugungi naqd/karta/QR, **kassani yopish** (FOM bilan farq, chegara, majburiy sabab), ziddiyat (409) dialogi, bugungi yopilishlar | `/v1/fomCashToday`, `/v1/settings`, `/v1/desktop`, `desk.cashClose`, `desk.resolveConflict` |
-| **Kameralar** | filial bo‘yicha guruhlangan kameralar, jonli ko‘rish (HLS, hls.js), SD/HD, **ovoz**, bosib turib **gapirish** (mikrofon → Edge) | `/v1/cameras`, `cameras.streamUrl`, `cameras.talk` |
-| **Tasdiqlashlar** | ro‘yxat + tafsilot (dalil, tavsiya, tarix), Tasdiqlash / O‘zgartirish so‘rash / Rad etish (izoh dialogi) | `/v1/approvals`, `approvals.decide` |
-| **Bildirishnomalar** | muhimlik bo‘yicha, o‘qilmaganlar soni nav-panelda (badge), o‘qilgan deb belgilash | `/v1/notifications`, `notifications.markRead|markAllRead` |
-| **Audit jurnali** | o‘zgarmas jurnal, qidiruv, «faqat sezgir» filtri | `/v1/audit` |
+Web paneldagi **barcha 36 yo‘l** desktop ilovaning o‘z ekrani sifatida qilingan va API’dan to‘g‘ridan-to‘g‘ri o‘qiydi/yozadi.
+To‘liq jadval (web yo‘l → desktop ekran → API): [COVERAGE.md](COVERAGE.md). Hech bir bo‘lim web panelga yo‘naltirmaydi.
 
-Web paneldan ochiladigan bo‘limlar (nav-panelda ↗ belgisi): Davomat, Ish jadvali, FOM hisobot, Xarajatlar, To‘lovlar, Oylik,
-Foyda va zarar, Pul oqimi, Soliq, Prognoz, Video devor, AI hodisalar, Muddatlar, Ta’minotchilar, Shifokorlar, Hisobotlar,
-Analitika, Sozlamalar. Ular bosqichma-bosqich native ekranlarga o‘tkaziladi (`ui/screens.js` ga yangi ekran + `NAV` da `native: true`).
+| Guruh | Ekranlar | Fayl |
+|---|---|---|
+| Asosiy | Bosh sahifa, Kassa yopilishi, Tasdiqlar, Bildirishlar, Audit jurnali | `ui/screens.js` |
+| Operatsiyalar / Analitika | Harajatlar, Pul oqimi, P&L, Prognoz, Analitika, Hisobotlar (PDF/XLSX), Soliq | `ui/screens/finance.js` |
+| Firmalar / Vrachlar / Sroklar | Firmalar va to‘lovlar, To‘lov kalendari, Vrachlar va ROI, Sroklar | `ui/screens/supply.js` |
+| HR | Xodimlar (+ import), Xodim tafsiloti, Grafiklar, Davomat, Oylik (Payroll), Oylik shablon va formula | `ui/screens/hr.js` |
+| AI nazorat | Review navbati, Video devor, Kameralar va zonalar (HLS + ovoz + Gapirish), Jonli filial | `ui/screens/control.js` |
+| Tizim | Filiallar (boshqaruv), FOM integratsiya, Tizim holati, Foydalanuvchilar, Rollar va ruxsatlar, Modullar, AI sozlamalari (OpenAI/OpenRouter/lokal), Sozlamalar, Profil | `ui/screens/system.js` |
+
+**Rollar:** menyu va ekranlar `/v1/me` dagi rolga qarab (`ui/app.js` → `ACCESS`, web `packages/core/src/roles.ts` bilan bir xil).
+Har rolning bosh ekrani: Egasi/Moliya/Mudir — Bosh sahifa, Super admin — Filiallar, HR — Xodimlar, Video operator — Review navbati,
+Kassir (EMPLOYEE) — Profil, Auditor — Audit jurnali. Auditor uchun barcha yozish amallari o‘chiq.
 
 ## Arxitektura
 
@@ -43,14 +43,14 @@ Analitika, Sozlamalar. Ular bosqichma-bosqich native ekranlarga o‘tkaziladi (`
 │ Asosiy              │   webview «shell» — ui/ (native ekranlar, kirish,       │
 │  Bosh sahifa        │   offline, dialoglar)  ── Rust `api` ──► API             │
 │  Filiallar …        │                                                         │
-│ Moliya ↗ …          │   webview «panel» — web panel (faqat ↗ bo‘limlar,       │
-│ Bildirishnomalar (3)│   yashirin holatda sessiya cookie’sini saqlaydi)        │
+│ Moliya …            │   webview «panel» — doim yashirin, faqat kirish         │
+│ Bildirishlar (3)    │   sessiyasi (refresh-cookie) uchun                      │
 │ ● Serverga ulangan  api-apteka.agrom24.uz  Yangilandi 19:22   KASSA-PC  v0.1.0  │ ← holat paneli
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 - **Ikki child-webview** (Tauri 2 multiwebview): `shell` — lokal `ui/` (`index.html`, `app.css`, `app.js` — yadro, `screens.js` — ekranlar,
-  `vendor/hls.light.min.js`); `panel` — web panel, faqat web bo‘lim tanlanganda ko‘rinadi.
+  `vendor/hls.light.min.js`); `panel` — doim yashirin, faqat kirish sessiyasini (httpOnly refresh-cookie) saqlaydi.
 - **Sessiya:** kirish so‘rovlari `panel_api` ko‘prigi orqali panel kontekstida (origin `apteka.agrom24.uz`) bajariladi, shuning uchun
   httpOnly refresh-cookie web paneldagidek saqlanadi (keyingi ishga tushishda avtomatik kiradi). Access token panel init-skriptida
   ushlanadi (`report_token`) va Rust xotirasida turadi; native ekranlar API’ga Rust (`api` buyrug‘i, reqwest) orqali murojaat qiladi —
@@ -60,8 +60,7 @@ Analitika, Sozlamalar. Ular bosqichma-bosqich native ekranlarga o‘tkaziladi (`
   ishga tushirish, Yopganda trayga yig‘ish, To‘liq ekran, Dastur haqida, Hisobdan chiqish, Chiqish). Tray ikonkasi, bitta nusxa, oyna holati.
 - **Klaviatura:** `Ctrl+F` bo‘lim qidirish, `Ctrl+B` nav-panel, `F5`/`Ctrl+R` yangilash, `Alt+←/→` orqaga/oldinga, `Alt+Home` bosh sahifa,
   `Ctrl+±/0` masshtab, `F11` to‘liq ekran, `Ctrl+Q` chiqish. Och/to‘q mavzu Windows sozlamasiga qarab.
-- **Linux cheklovi:** WebKitGTK’da child-webview pozitsiyasi ishlamaydi — Linux’da web bo‘lim ochilganda panel butun oynani egallaydi
-  (pastki chapdagi «◂ Apteka 360» tugmasi ilovaga qaytaradi). Native ekranlar Linux’da ham to‘liq ishlaydi.
+- Barcha ekranlar native bo‘lgani uchun Linux’da ham Windows’dagidek ishlaydi.
 
 ## Imkoniyatlar (qobiq)
 
@@ -233,5 +232,7 @@ two-way audio) tugmalari bor. Desktop qobiqda buning uchun:
   lokal dev API bilan oxirigacha sinalgan. Windows’da child-webview joylashuvi (web bo‘limlar) va WebView2 mikrofon dialogi tekshirilishi kerak.
 - Kamera jonli ko‘rish va «Gapirish» haqiqiy kamera/Edge bilan sinalmagan (lokal seed’da `cameras` moduli o‘chiq).
 - Kassa yopishning oflayn navbati (SQLite, `docs/API-MOBILE-DESKTOP.md` 3.4) hali yo‘q: aloqa bo‘lmasa yopish yuborilmaydi va xato ko‘rsatiladi.
-- Ko‘p bo‘limlar hali web paneldan ochiladi (↗). Ular native ekranlarga bosqichma-bosqich o‘tkaziladi.
+- Ba’zi web ekranlardagi namunaviy (qattiq yozilgan) ma’lumotlar API’da yo‘q, desktopda ko‘rsatilmaydi: masalan davomat kalendari
+  (API’da `/v1/attendance` yo‘q, ekranda «prototip ma’lumoti» deb belgilangan), xodim pasport/tug‘ilgan sana, kamera zonalarini chizish.
+- Seed (lokal) muhitda FOM ulanmagan — tushum, kassa qoldig‘i va prognoz «FOM ulanmagan» deb ko‘rinadi; prod’da FOM agenti ulangach to‘ladi.
 - EXE imzolanmagan (SmartScreen ogohlantiradi); MSI faqat CI’dan.
