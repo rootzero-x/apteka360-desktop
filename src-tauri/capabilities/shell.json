@@ -36,6 +36,9 @@
     "allow-quit-app",
     "allow-panel-eval-compact",
     "allow-show-more-menu",
-    "allow-panel-api"
+    "allow-panel-api",
+    "allow-api",
+    "allow-has-token",
+    "allow-debug-log"
   ]
 }

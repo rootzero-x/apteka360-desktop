@@ -37,12 +37,16 @@ pub const API_URL: &str = match option_env!("APTEKA_API_URL") {
 };
 
 const WINDOW: &str = "main";
+/// capabilities/remote.json bilan bir xil (maxsus panel manzili uchun runtime capability).
+const REMOTE_PERMISSIONS: &[&str] = &["core:event:default", "allow-toggle-fullscreen", "allow-zoom-step", "allow-panel-reload", "allow-panel-back", "allow-panel-forward", "allow-report-network", "allow-get-client-info", "allow-api-result", "allow-report-token", "allow-shell-home"];
 const SHELL: &str = "shell";
 const PANEL: &str = "panel";
 const ZOOM_STEPS: [f64; 9] = [0.67, 0.75, 0.8, 0.9, 1.0, 1.1, 1.25, 1.5, 1.75];
 const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36 Apteka360Desktop";
 
 struct ZoomState(Mutex<usize>);
+/// Joriy access token (15 daqiqa). Panel webview'dagi init-skript auth javoblaridan va so'rov sarlavhalaridan oladi.
+struct TokenState(Mutex<Option<String>>);
 /// Oynani yopganda trayga yig'ish (true) yoki ilovadan chiqish (false).
 struct CloseToTray(Mutex<bool>);
 
@@ -57,6 +61,8 @@ struct ClientInfo {
     platform: &'static str,
     /// `APTEKA_SELFTEST=1` (runtime): qobiq login ko'prigini avtomatik sinaydi (faqat diagnostika).
     selftest: bool,
+    /// `APTEKA_SELFTEST_ROUTE` — diagnostika: kirgandan keyin ochiladigan ekran.
+    selftest_route: Option<String>,
 }
 
 #[derive(Serialize, Clone)]
@@ -93,13 +99,15 @@ fn client_info(app: &AppHandle) -> ClientInfo {
     let hostname = ascii_hostname();
     ClientInfo {
         client_header: format!("desktop/{version}"),
-        device_header: format!("{hostname} · Desktop ilova"),
+        // HTTP sarlavhasi faqat ASCII bo'lishi kerak («·» UTF-8 da buziladi)
+        device_header: format!("{hostname} - Desktop ilova"),
         hostname,
         version,
         panel_url: PANEL_URL.to_string(),
         api_url: API_URL.to_string(),
         platform: std::env::consts::OS,
         selftest: std::env::var("APTEKA_SELFTEST").map(|v| v == "1").unwrap_or(false),
+        selftest_route: std::env::var("APTEKA_SELFTEST_ROUTE").ok(),
     }
 }
 
@@ -258,10 +266,11 @@ fn show_more_menu(app: AppHandle, close_to_tray: State<'_, CloseToTray>, x: f64,
         .checked(close_to_tray.0.lock().map(|v| *v).unwrap_or(true)).build(&app).map_err(|e| e.to_string())?;
     let fs = b("m_fs", "To'liq ekran", Some("F11"))?;
     let about = b("m_about", "Apteka 360 haqida", None)?;
+    let logout = b("m_logout", "Hisobdan chiqish", None)?;
     let quit = b("m_quit", "Chiqish", Some("Ctrl+Q"))?;
     let sep = || PredefinedMenuItem::separator(&app).map_err(|e| e.to_string());
     let menu = MenuBuilder::new(&app)
-        .items(&[&home, &reload, &browser, &sep()?, &compact_i, &autostart, &tray, &sep()?, &fs, &about, &sep()?, &quit])
+        .items(&[&home, &reload, &browser, &sep()?, &compact_i, &autostart, &tray, &sep()?, &fs, &about, &sep()?, &logout, &quit])
         .build().map_err(|e| e.to_string())?;
     menu.popup_at(w, LogicalPosition::new(x, y)).map_err(|e| e.to_string())
 }
@@ -272,6 +281,7 @@ fn handle_menu(app: &AppHandle, id: &str) {
         "m_reload" => { let _ = panel_reload(app.clone()); }
         "m_browser" => { let _ = open_in_browser(app.clone()); }
         "m_compact" => emit_shell(app, "menu", "compact"),
+        "m_logout" => emit_shell(app, "menu", "logout"),
         "m_autostart" => {
             let al = app.autolaunch();
             let on = al.is_enabled().unwrap_or(false);
@@ -294,21 +304,113 @@ fn handle_menu(app: &AppHandle, id: &str) {
 /// shunda httpOnly refresh-cookie web paneldagi kabi o'rnatiladi va panel sessiyani o'zi tiklaydi.
 /// Natija `api_result` buyrug'i orqali qaytib, qobiqqa `api` hodisasi sifatida yetkaziladi.
 #[tauri::command]
-fn panel_api(app: AppHandle, id: String, path: String, body: serde_json::Value) -> Result<(), String> {
+fn panel_api(app: AppHandle, tokens: State<'_, TokenState>, id: String, path: String, body: serde_json::Value) -> Result<(), String> {
     if !path.starts_with("/v1/auth/") && path != "/v1/me" {
         return Err("faqat auth yo'llari".into());
     }
+    let auth = if path == "/v1/auth/logout" {
+        tokens.0.lock().ok().and_then(|t| t.clone()).map(|t| format!("Bearer {t}")).unwrap_or_default()
+    } else {
+        String::new()
+    };
     let js = format!(
-        r#"(function(){{var id={id},url={url},body={body};
-fetch(url,{{method:'POST',credentials:'include',headers:{{'Content-Type':'application/json'}},body:JSON.stringify(body)}})
-.then(function(r){{return r.text().then(function(t){{var b;try{{b=JSON.parse(t)}}catch(e){{b={{}}}}
+        r#"(function(){{var id={id},url={url},body={body},auth={auth},h={{'Content-Type':'application/json'}};if(auth)h.Authorization=auth;
+fetch(url,{{method:'POST',credentials:'include',headers:h,body:JSON.stringify(body)}})
+.then(function(r){{return r.text().then(function(t){{var b;try{{b=JSON.parse(t)}}catch(e){{b={{}}}}if(b){{delete b.refreshToken;delete b.accessToken;}}
   window.__TAURI__.core.invoke('api_result',{{id:id,status:r.status,body:b}});}});}})
-.catch(function(e){{window.__TAURI__.core.invoke('api_result',{{id:id,status:0,body:{{error:'Server bilan aloqa yo‘q. Internetni tekshiring.',code:'unavailable'}}}});}});}})();"#,
+.catch(function(e){{window.__TAURI__.core.invoke('api_result',{{id:id,status:0,body:{{error:'Server bilan aloqa yo‘q. Internetni tekshiring.',code:'unavailable',detail:String(e&&e.message||e)}}}});}});}})();"#,
         id = serde_json::to_string(&id).map_err(|e| e.to_string())?,
         url = serde_json::to_string(&format!("{}{}", API_URL.trim_end_matches('/'), path)).map_err(|e| e.to_string())?,
         body = serde_json::to_string(&body).map_err(|e| e.to_string())?,
+        auth = serde_json::to_string(&auth).map_err(|e| e.to_string())?,
     );
     panel(&app)?.eval(js).map_err(|e| e.to_string())
+}
+
+/// Panel webview: yangi access token (auth javobi yoki Authorization sarlavhasidan).
+#[tauri::command]
+fn report_token(app: AppHandle, tokens: State<'_, TokenState>, token: Option<String>) {
+    let changed = {
+        let mut t = match tokens.0.lock() { Ok(t) => t, Err(_) => return };
+        let changed = *t != token;
+        *t = token.clone();
+        changed
+    };
+    if changed {
+        emit_shell(&app, "token", token.is_some());
+    }
+}
+
+/// Panel (Linux zaxira rejimi) → qobiqning native bosh sahifasiga qaytish.
+/// Diagnostika: qobiq jurnalini stderr'ga yozish (APTEKA_DEBUG=1 bo'lganda).
+#[tauri::command]
+fn debug_log(msg: String) {
+    if std::env::var("APTEKA_DEBUG").map(|v| v == "1").unwrap_or(false) {
+        eprintln!("[shell] {msg}");
+    }
+}
+
+#[tauri::command]
+fn shell_home(app: AppHandle) {
+    emit_shell(&app, "menu", "native-home");
+}
+
+#[tauri::command]
+fn has_token(tokens: State<'_, TokenState>) -> bool {
+    tokens.0.lock().map(|t| t.is_some()).unwrap_or(false)
+}
+
+/// Native ekranlar uchun API so'rovi (Rust → reqwest; CORS yo'q). `idem` — buyruqlar uchun Idempotency-Key.
+#[tauri::command]
+async fn api(
+    app: AppHandle,
+    method: String,
+    path: String,
+    body: Option<serde_json::Value>,
+    idem: Option<String>,
+) -> Result<ApiResult, String> {
+    if !path.starts_with("/v1/") || path.starts_with("/v1/auth/") {
+        return Err("ruxsat etilmagan yo'l".into());
+    }
+    let token = app.state::<TokenState>().0.lock().map_err(|e| e.to_string())?.clone();
+    let info = client_info(&app);
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(25))
+        .user_agent(format!("Apteka360Desktop/{}", info.version))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let url = format!("{}{}", API_URL.trim_end_matches('/'), path);
+    let mut req = match method.as_str() {
+        "GET" => client.get(&url),
+        "POST" => client.post(&url),
+        _ => return Err("faqat GET/POST".into()),
+    }
+    .header("X-Client", &info.client_header)
+    .header("X-Client-Device", &info.device_header);
+    if let Some(t) = token {
+        req = req.bearer_auth(t);
+    }
+    if let Some(k) = idem {
+        req = req.header("Idempotency-Key", k);
+    }
+    if let Some(b) = body {
+        req = req
+            .header("Content-Type", "application/json")
+            .body(serde_json::to_vec(&b).map_err(|e| e.to_string())?);
+    }
+    match req.send().await {
+        Ok(resp) => {
+            let status = resp.status().as_u16();
+            let text = resp.text().await.unwrap_or_default();
+            let body = serde_json::from_str(&text).unwrap_or(serde_json::Value::Null);
+            Ok(ApiResult { id: String::new(), status, body })
+        }
+        Err(e) => Ok(ApiResult {
+            id: String::new(),
+            status: 0,
+            body: serde_json::json!({ "error": "Server bilan aloqa yo‘q. Internetni tekshiring.", "code": "unavailable", "detail": e.to_string() }),
+        }),
+    }
 }
 
 #[tauri::command]
@@ -377,6 +479,7 @@ fn init_script(info: &ClientInfo) -> String {
         .replace("__DEVICE_HEADER__", &info.device_header)
         .replace("__PANEL_URL__", &info.panel_url)
         .replace("__APP_VERSION__", &info.version)
+        .replace("__API_URL__", &info.api_url)
 }
 
 fn show_main(app: &AppHandle) {
@@ -419,11 +522,12 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(ZoomState(Mutex::new(4)))
         .manage(CloseToTray(Mutex::new(true)))
+        .manage(TokenState(Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![
             check_online, get_client_info, toggle_fullscreen, zoom_step,
             panel_navigate, panel_reload, panel_back, panel_forward, panel_eval_compact,
             set_panel_bounds, set_panel_visible, report_network,
-            get_prefs, set_pref, show_about, open_in_browser, quit_app, show_more_menu, panel_api, api_result
+            get_prefs, set_pref, show_about, open_in_browser, quit_app, show_more_menu, panel_api, api_result, report_token, has_token, api, shell_home, debug_log
         ])
         .on_menu_event(|app, event| handle_menu(app, event.id().as_ref()));
 
@@ -436,6 +540,22 @@ pub fn run() {
         .setup(|app| {
             let handle = app.handle().clone();
             let info = client_info(&handle);
+
+            // APTEKA_PANEL_URL boshqa domen bo'lsa (staging / lokal sinov) — o'sha origin'ga ham panel ruxsatlarini beramiz
+            if let Ok(u) = Url::parse(PANEL_URL) {
+                let host = u.host_str().unwrap_or_default().to_ascii_lowercase();
+                if !host.ends_with("agrom24.uz") {
+                    let origin = u.origin().ascii_serialization();
+                    let mut cap = tauri::ipc::CapabilityBuilder::new("remote-panel-custom")
+                        .remote(format!("{origin}/*"))
+                        .window(WINDOW)
+                        .webview(PANEL);
+                    for p in REMOTE_PERMISSIONS {
+                        cap = cap.permission(*p);
+                    }
+                    app.add_capability(cap)?;
+                }
+            }
 
             let window = WindowBuilder::new(app, WINDOW)
                 .title("Apteka 360")
@@ -454,6 +574,11 @@ pub fn run() {
             window.add_child(
                 WebviewBuilder::new(SHELL, WebviewUrl::App("index.html".into()))
                     .initialization_script(init_script(&info))
+                    // Native kamera ekrani: ovoz (autoplay) va «Gapirish» (mikrofon) — lokal qobiq ishonchli
+                    .on_permission_request(|_wv, kind| match kind {
+                        PermissionKind::Microphone | PermissionKind::Autoplay => PermissionResponse::Allow,
+                        _ => PermissionResponse::Default,
+                    })
                     .auto_resize(),
                 LogicalPosition::new(0.0, 0.0),
                 size,

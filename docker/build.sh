@@ -30,6 +30,7 @@ in_container() {
     -e APPIMAGE_EXTRACT_AND_RUN=1 \
     -e NO_STRIP=1 \
     -e APTEKA_PANEL_URL="${APTEKA_PANEL_URL:-https://apteka.agrom24.uz}" \
+    -e APTEKA_API_URL="${APTEKA_API_URL:-https://api-apteka.agrom24.uz}" \
     -w /work "$IMAGE" "$@"
 }
 
@@ -39,7 +40,7 @@ case "${1:-}" in
   icons)
     in_container cargo tauri icon assets/app-icon.png -o src-tauri/icons ;;
   linux)
-    in_container cargo tauri build --bundles deb,rpm,appimage "${@:2}"
+    in_container cargo tauri build --bundles "${BUNDLES:-deb,rpm,appimage}" "${@:2}"
     mkdir -p "$HERE/dist/linux"
     cp -v "$CACHE"/target/release/bundle/deb/*.deb "$CACHE"/target/release/bundle/rpm/*.rpm "$HERE/dist/linux/" 2>/dev/null || true
     cp -v "$CACHE"/target/release/bundle/appimage/*.AppImage "$HERE/dist/linux/" 2>/dev/null || true

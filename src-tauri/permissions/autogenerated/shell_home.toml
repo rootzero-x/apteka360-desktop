@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-shell-home"
+description = "Enables the shell_home command without any pre-configured scope."
+commands.allow = ["shell_home"]
+
+[[permission]]
+identifier = "deny-shell-home"
+description = "Denies the shell_home command without any pre-configured scope."
+commands.deny = ["shell_home"]

@@ -4,471 +4,108 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Apteka 360</title>
-<style>
-  /* ---- Fluent Design (Windows 11) token'lari ---- */
-  :root {
-    --font: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, Roboto, "Noto Sans", Arial, sans-serif;
-    --accent: #0f7b6c; --accent-hover: #0c6a5d; --accent-soft: rgba(15,123,108,.12);
-    --bg: #f3f3f3; --layer: #ffffff; --layer-alt: #fbfbfb; --stroke: rgba(0,0,0,.0578); --stroke-strong: rgba(0,0,0,.16);
-    --text: #1b1b1b; --text-2: rgba(0,0,0,.61); --text-3: rgba(0,0,0,.45);
-    --hover: rgba(0,0,0,.0373); --pressed: rgba(0,0,0,.0241); --selected: rgba(0,0,0,.0605);
-    --nav-w: 268px; --nav-compact: 48px; --cmd-h: 44px; --status-h: 24px; --radius: 6px;
-    color-scheme: light;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #202020; --layer: #272727; --layer-alt: #2b2b2b; --stroke: rgba(255,255,255,.0837); --stroke-strong: rgba(255,255,255,.2);
-      --text: #ffffff; --text-2: rgba(255,255,255,.786); --text-3: rgba(255,255,255,.55);
-      --hover: rgba(255,255,255,.0605); --pressed: rgba(255,255,255,.0419); --selected: rgba(255,255,255,.0837);
-      --accent: #3fc6b1; --accent-hover: #5fd3c1; --accent-soft: rgba(63,198,177,.16);
-      color-scheme: dark;
-    }
-  }
-  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
-  html, body { height: 100%; margin: 0; overflow: hidden; }
-  body { font: 14px/20px var(--font); color: var(--text); background: var(--bg); display: grid;
-         grid-template-columns: var(--nav-w) minmax(0,1fr); grid-template-rows: var(--cmd-h) minmax(0,1fr) var(--status-h);
-         grid-template-areas: "nav cmd" "nav content" "status status"; transition: grid-template-columns .15s ease; }
-  body.nav-compact { grid-template-columns: var(--nav-compact) minmax(0,1fr); }
-  body.bare { grid-template-columns: 0 minmax(0,1fr); grid-template-rows: 0 minmax(0,1fr) 0; }
-  body.bare nav, body.bare #cmd, body.bare #status { display: none; }
-  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: default; }
-  svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; flex: none; }
-
-  /* ---- NavigationView ---- */
-  nav { grid-area: nav; display: flex; flex-direction: column; padding: 6px 4px 4px; overflow: hidden; background: var(--bg); }
-  .nav-top { display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 0 0 2px; margin-bottom: 6px; }
-  .burger { width: 40px; height: 36px; border-radius: var(--radius); display: grid; place-items: center; }
-  .burger:hover, .nav-item:hover, .cmd button:hover, .menu button:hover { background: var(--hover); }
-  .burger:active, .nav-item:active, .cmd button:active { background: var(--pressed); }
-  .brand { display: flex; align-items: center; gap: 10px; overflow: hidden; white-space: nowrap; font-weight: 600; font-size: 14px; }
-  .brand .logo { width: 28px; height: 28px; border-radius: 7px; background: linear-gradient(135deg,#14b8a6,#0e7490); color: #fff; font: 700 11px/28px var(--font); text-align: center; flex: none; letter-spacing: -.3px; }
-  .nav-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; }
-  .nav-group { margin: 6px 0 2px; padding: 0 12px; font-size: 12px; color: var(--text-3); white-space: nowrap; overflow: hidden; height: 20px; }
-  .nav-item { display: flex; align-items: center; gap: 14px; height: 36px; margin: 2px 0; padding: 0 10px 0 12px; border-radius: var(--radius);
-              width: 100%; text-align: left; white-space: nowrap; overflow: hidden; position: relative; color: var(--text); }
-  .nav-item.active { background: var(--selected); }
-  .nav-item.active::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 2px; background: var(--accent); }
-  .nav-item .lbl { overflow: hidden; text-overflow: ellipsis; }
-  body.nav-compact .brand, body.nav-compact .nav-group, body.nav-compact .nav-item .lbl { display: none; }
-  body.nav-compact .nav-item { padding: 0; justify-content: center; gap: 0; }
-  .nav-footer { border-top: 1px solid var(--stroke); padding-top: 4px; margin-top: 4px; }
-
-  /* ---- Command bar ---- */
-  #cmd { grid-area: cmd; display: flex; align-items: center; gap: 2px; padding: 0 8px 0 4px; background: var(--bg); position: relative; }
-  .cmd button { width: 36px; height: 36px; border-radius: var(--radius); display: grid; place-items: center; color: var(--text); }
-  .cmd button:disabled { color: var(--text-3); background: none; }
-  .crumb { display: flex; align-items: center; gap: 8px; margin-left: 8px; font-size: 14px; white-space: nowrap; overflow: hidden; }
-  .crumb .sep { color: var(--text-3); }
-  .crumb b { font-weight: 600; }
-  .spacer { flex: 1; }
-  .pill { font-size: 12px; color: var(--text-2); padding: 0 8px; height: 28px; line-height: 28px; border-radius: 14px; }
-  .pill:hover { background: var(--hover); }
-  #progress { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; overflow: hidden; display: none; }
-  #progress::after { content: ""; position: absolute; inset: 0; width: 40%; background: var(--accent); border-radius: 2px; animation: slide 1.1s ease-in-out infinite; }
-  @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(260%); } }
-  body.loading #progress { display: block; }
-
-  /* ---- Content (panel shu yerda) ---- */
-  #content { grid-area: content; position: relative; background: var(--layer); border-top-left-radius: 8px; border: 1px solid var(--stroke); border-right: 0; border-bottom: 0; overflow: hidden; }
-  body.bare #content { border-radius: 0; border: 0; }
-  .card { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; text-align: center; background: var(--layer); }
-  .card.show { display: flex; }
-  .card .inner { max-width: 440px; padding: 32px; }
-  .card h1 { font-size: 20px; font-weight: 600; margin: 14px 0 6px; }
-  .card p { color: var(--text-2); margin: 6px 0 0; }
-  .card .ico { width: 72px; height: 72px; border-radius: 18px; margin: 0 auto; background: linear-gradient(135deg,#14b8a6,#0e7490); color: #fff; display: grid; place-items: center; font: 700 20px var(--font); box-shadow: 0 10px 30px rgba(20,184,166,.3); }
-  .btn { display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 20px; margin-top: 18px; border-radius: var(--radius);
-         background: var(--accent); color: #fff; font-weight: 600; border: 1px solid rgba(0,0,0,.1); }
-  .btn:hover { background: var(--accent-hover); }
-  .small { font-size: 12px; color: var(--text-3); margin-top: 12px; }
-  .spin { width: 28px; height: 28px; border: 3px solid var(--stroke-strong); border-top-color: var(--accent); border-radius: 50%; margin: 18px auto 0; animation: rot .9s linear infinite; }
-  @keyframes rot { to { transform: rotate(360deg); } }
-
-  /* ---- Native login ---- */
-  #card-login { background: var(--bg); }
-  #card-login .inner { max-width: 460px; width: 100%; text-align: left; padding: 0 24px; }
-  .login-box { background: var(--layer); border: 1px solid var(--stroke); border-radius: 8px; padding: 28px 28px 24px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
-  .login-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
-  .login-head .logo { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg,#14b8a6,#0e7490); color: #fff; font: 700 13px/40px var(--font); text-align: center; }
-  .login-head h1 { font-size: 20px; font-weight: 600; margin: 0; }
-  .login-head .sub { font-size: 12px; color: var(--text-3); }
-  .field { margin-top: 12px; }
-  .field label { display: block; font-size: 13px; margin-bottom: 4px; color: var(--text-2); }
-  .field input { width: 100%; height: 34px; padding: 0 10px; font: inherit; color: var(--text); background: var(--layer-alt); border: 1px solid var(--stroke-strong); border-bottom-color: var(--text-3); border-radius: 4px; outline: none; user-select: text; -webkit-user-select: text; }
-  .field input:focus { border-bottom: 2px solid var(--accent); background: var(--layer); }
-  .field input.otp { font-size: 24px; letter-spacing: .45em; text-align: center; height: 48px; }
-  .row { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; font-size: 13px; white-space: nowrap; gap: 12px; }
-  .chk { display: flex; align-items: center; gap: 8px; }
-  .chk input { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; }
-  a.link { color: var(--accent); text-decoration: none; cursor: default; }
-  a.link:hover { text-decoration: underline; }
-  .btn.full { width: 100%; margin-top: 18px; }
-  .btn.sec { background: var(--layer-alt); color: var(--text); border-color: var(--stroke-strong); }
-  .btn:disabled { opacity: .5; }
-  .err { color: #c42b1c; font-size: 13px; margin-top: 10px; min-height: 18px; }
-  @media (prefers-color-scheme: dark) { .err { color: #ff99a4; } }
-  .login-foot { text-align: center; font-size: 12px; color: var(--text-3); margin-top: 16px; }
-  .step { display: none; } .step.show { display: block; }
-  .kv { display: grid; grid-template-columns: 110px 1fr; gap: 6px 12px; font-size: 13px; margin-top: 12px; padding: 12px; background: var(--layer-alt); border-radius: 6px; }
-  .kv span:nth-child(odd) { color: var(--text-3); }
-  .note { font-size: 13px; color: var(--text-2); margin: 0 0 4px; }
-  .login-box.busy { pointer-events: none; opacity: .85; }
-
-  /* ---- Status bar ---- */
-  #status { grid-area: status; display: flex; align-items: center; gap: 18px; padding: 0 12px; font-size: 12px; color: var(--text-2); background: var(--bg); border-top: 1px solid var(--stroke); white-space: nowrap; }
-  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #16a34a; margin-right: 6px; vertical-align: 0; }
-  .dot.off { background: #dc2626; }
-  #status .right { margin-left: auto; display: flex; gap: 18px; }
-
-  /* ---- Flyout menu ---- */
-  .menu { position: absolute; top: 42px; right: 8px; min-width: 260px; background: var(--layer); border: 1px solid var(--stroke-strong); border-radius: 8px;
-          box-shadow: 0 8px 16px rgba(0,0,0,.14); padding: 4px; display: none; z-index: 10; }
-  .menu.open { display: block; }
-  .menu button { display: flex; align-items: center; gap: 12px; width: 100%; height: 34px; padding: 0 10px; border-radius: 4px; text-align: left; }
-  .menu .check { width: 16px; text-align: center; color: var(--accent); font-weight: 700; }
-  .menu hr { border: 0; border-top: 1px solid var(--stroke); margin: 4px 0; }
-  .menu .k { margin-left: auto; color: var(--text-3); font-size: 12px; }
-</style>
+<link rel="stylesheet" href="app.css">
+<script>window.addEventListener('error',function(e){var t=document.getElementById('ov-loading-t');if(t)t.textContent='Ichki xato: '+(e.message||e)+' ('+(e.filename||'').split('/').pop()+':'+e.lineno+')';});
+window.addEventListener('unhandledrejection',function(e){var t=document.getElementById('ov-loading-t');if(t&&!window.Apteka_started)t.textContent='Ichki xato: '+(e.reason&&(e.reason.message||e.reason.error)||e.reason);});</script>
 </head>
-<body class="loading">
+<body class="bare loading">
 
 <nav>
   <div class="nav-top">
-    <button class="burger" id="burger" title="Navigatsiya (Ctrl+B)"><svg viewBox="0 0 20 20"><path d="M3 5h14M3 10h14M3 15h14"/></svg></button>
-    <div class="brand"><span class="logo">A360</span><span>Apteka 360</span></div>
+    <button class="burger" id="burger" title="Navigatsiya (Ctrl+B)"></button>
+    <div class="app-title"><span class="logo"></span><span>Apteka 360</span></div>
   </div>
+  <button class="acct" id="acct" title="Hisob">
+    <span class="avatar" id="acct-av">A</span>
+    <span class="who"><div class="nm" id="acct-name">—</div><div class="rl" id="acct-role"></div></span>
+  </button>
+  <div class="nav-search"><input class="tb" id="nav-q" placeholder="Bo‘lim qidirish" spellcheck="false"><span id="nav-q-i"></span></div>
   <div class="nav-scroll" id="navlist"></div>
   <div class="nav-footer" id="navfoot"></div>
 </nav>
 
-<div id="cmd" class="cmd">
-  <button id="back" title="Orqaga (Alt+←)"><svg viewBox="0 0 20 20"><path d="M12 4l-6 6 6 6"/></svg></button>
-  <button id="fwd" title="Oldinga (Alt+→)"><svg viewBox="0 0 20 20"><path d="M8 4l6 6-6 6"/></svg></button>
-  <button id="reload" title="Yangilash (F5)"><svg viewBox="0 0 20 20"><path d="M16 10a6 6 0 1 1-1.8-4.3M16 3v3.5h-3.5"/></svg></button>
-  <div class="crumb"><span id="crumb-group">Apteka 360</span><span class="sep">/</span><b id="crumb-page">Bosh sahifa</b></div>
+<div id="cmd">
+  <button class="cmd-btn" id="back" title="Orqaga (Alt+←)"></button>
+  <button class="cmd-btn" id="fwd" title="Oldinga (Alt+→)"></button>
+  <button class="cmd-btn" id="reload" title="Yangilash (F5)"></button>
+  <div class="crumb"><span id="crumb-group">Apteka 360</span><span>›</span><b id="crumb-page">Bosh sahifa</b></div>
   <div class="spacer"></div>
-  <button class="pill" id="zoom" title="Masshtab (Ctrl+0 — asl)">100%</button>
-  <button id="fs" title="To‘liq ekran (F11)"><svg viewBox="0 0 20 20"><path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4"/></svg></button>
-  <button id="more" title="Boshqa"><svg viewBox="0 0 20 20"><circle cx="4" cy="10" r="1.2" fill="currentColor"/><circle cx="10" cy="10" r="1.2" fill="currentColor"/><circle cx="16" cy="10" r="1.2" fill="currentColor"/></svg></button>
+  <button class="pill-btn" id="zoom" title="Masshtab (Ctrl+0 — asl)">100%</button>
+  <button class="cmd-btn" id="fs" title="To‘liq ekran (F11)"></button>
+  <button class="cmd-btn" id="more" title="Boshqa"></button>
   <div id="progress"></div>
 </div>
 
 <div id="content">
-  <div class="card show" id="card-loading"><div class="inner"><div class="ico">A360</div><h1>Apteka 360</h1><p>Serverga ulanmoqda…</p><div class="spin"></div></div></div>
-  <div class="card" id="card-login"><div class="inner"><div class="login-box" id="login-box">
-    <div class="login-head"><span class="logo">A360</span><div><h1>Apteka 360</h1><div class="sub">Dorixona tarmog‘i boshqaruv tizimi</div></div></div>
+  <div id="view"></div>
+
+  <div class="overlay show" id="ov-loading"><div class="inner"><div class="app-mark">A360</div><h2>Apteka 360</h2><p id="ov-loading-t">Serverga ulanmoqda…</p><div class="ring"></div></div></div>
+
+  <div class="overlay" id="ov-offline"><div class="inner"><div class="app-mark">A360</div><h2>Internet aloqasi yo‘q</h2>
+    <p>Apteka 360 serveriga ulanib bo‘lmadi. Tarmoq kabelini yoki Wi‑Fi ulanishini tekshiring va qayta urinib ko‘ring.</p>
+    <button class="btn accent" id="retry" style="margin-top:20px">Qayta urinish</button><div class="small" id="countdown"></div><div class="small" id="err"></div></div></div>
+
+  <div class="overlay" id="ov-login"><div class="inner"><div class="login-box" id="login-box">
+    <div class="login-head"><div class="app-mark">A360</div><div><h1>Apteka 360</h1><div class="sub">Dorixona tarmog‘i boshqaruv tizimi</div></div></div>
 
     <div class="step show" id="s-creds">
-      <p class="note">Tizimga kirish uchun telefon raqam yoki e-pochta va parolingizni kiriting.</p>
-      <div class="field"><label for="f-login">Telefon yoki e-pochta</label><input id="f-login" autocomplete="username" spellcheck="false"></div>
-      <div class="field"><label for="f-pass">Parol</label><input id="f-pass" type="password" autocomplete="current-password"></div>
-      <div class="row"><label class="chk"><input type="checkbox" id="f-remember" checked> Bu qurilmani eslab qolish</label><a class="link" id="a-forgot">Parolni unutdingizmi?</a></div>
+      <p class="note">Hisobingizga kirish uchun telefon raqam yoki e-pochta va parolni kiriting.</p>
+      <div class="field"><label for="f-login">Telefon yoki e-pochta</label><input class="tb" id="f-login" autocomplete="username" spellcheck="false" placeholder="+998 90 123 45 67"></div>
+      <div class="field"><label for="f-pass">Parol</label><input class="tb" id="f-pass" type="password" autocomplete="current-password"></div>
+      <div class="row"><label class="chk"><input type="checkbox" id="f-remember" checked> Bu kompyuterni eslab qolish</label><a class="link" id="a-forgot">Parolni unutdingizmi?</a></div>
       <div class="err" id="e-creds"></div>
-      <button class="btn full" id="b-login">Kirish</button>
+      <button class="btn accent full" id="b-login">Kirish</button>
     </div>
 
     <div class="step" id="s-otp">
       <p class="note"><b>Tasdiqlash kodi.</b> Telegram yoki SMS orqali yuborilgan 6 xonali kodni kiriting.</p>
-      <div class="field"><input id="f-otp" class="otp" inputmode="numeric" maxlength="6" autocomplete="one-time-code"></div>
+      <div class="field"><input class="tb otp" id="f-otp" inputmode="numeric" maxlength="6" autocomplete="one-time-code"></div>
       <div class="row"><a class="link" id="a-resend">Kodni qayta yuborish</a><a class="link" id="a-back1">Orqaga</a></div>
       <div class="err" id="e-otp"></div>
-      <button class="btn full" id="b-otp">Tasdiqlash</button>
+      <button class="btn accent full" id="b-otp">Tasdiqlash</button>
     </div>
 
     <div class="step" id="s-device">
       <p class="note"><b>Yangi qurilma.</b> Bu kompyuterdan birinchi marta kirilmoqda. Ma’lumotlarni tekshiring:</p>
-      <div class="kv"><span>Qurilma</span><span id="d-device"></span><span>Joylashuv</span><span id="d-loc"></span><span>IP manzil</span><span id="d-ip"></span></div>
+      <div class="kvbox"><span>Qurilma</span><span id="d-device"></span><span>Joylashuv</span><span id="d-loc"></span><span>IP manzil</span><span id="d-ip"></span></div>
       <div class="err" id="e-device"></div>
-      <button class="btn full" id="b-trust">Bu men — davom etish</button>
-      <button class="btn full sec" id="b-block">Bu men emas — bloklash</button>
+      <button class="btn accent full" id="b-trust">Bu men — davom etish</button>
+      <button class="btn full" id="b-block">Bu men emas — bloklash</button>
     </div>
 
     <div class="step" id="s-forgot">
       <p class="note"><b>Parolni tiklash.</b> Telefon raqam yoki e-pochtangizni kiriting — tiklash kodi Telegram/SMS orqali keladi.</p>
-      <div class="field"><label for="f-flogin">Telefon yoki e-pochta</label><input id="f-flogin" spellcheck="false"></div>
+      <div class="field"><label for="f-flogin">Telefon yoki e-pochta</label><input class="tb" id="f-flogin" spellcheck="false"></div>
       <div class="err" id="e-forgot"></div>
-      <button class="btn full" id="b-forgot">Kod yuborish</button>
+      <button class="btn accent full" id="b-forgot">Kod yuborish</button>
       <div class="login-foot"><a class="link" id="a-back2">Kirishga qaytish</a></div>
     </div>
 
     <div class="step" id="s-reset">
       <p class="note"><b>Yangi parol.</b> Kelgan kodni va yangi parolni kiriting. Hisobning barcha sessiyalari yakunlanadi.</p>
-      <div class="field"><label for="f-rcode">Tiklash kodi</label><input id="f-rcode" inputmode="numeric" maxlength="6"></div>
-      <div class="field"><label for="f-pw1">Yangi parol</label><input id="f-pw1" type="password" autocomplete="new-password"></div>
-      <div class="field"><label for="f-pw2">Yangi parol (takror)</label><input id="f-pw2" type="password" autocomplete="new-password"></div>
+      <div class="field"><label for="f-rcode">Tiklash kodi</label><input class="tb" id="f-rcode" inputmode="numeric" maxlength="6"></div>
+      <div class="field"><label for="f-pw1">Yangi parol</label><input class="tb" id="f-pw1" type="password" autocomplete="new-password"></div>
+      <div class="field"><label for="f-pw2">Yangi parol (takror)</label><input class="tb" id="f-pw2" type="password" autocomplete="new-password"></div>
       <div class="row"><a class="link" id="a-resend2">Kodni qayta yuborish</a><a class="link" id="a-back3">Orqaga</a></div>
       <div class="err" id="e-reset"></div>
-      <button class="btn full" id="b-reset">Parolni o‘zgartirish</button>
+      <button class="btn accent full" id="b-reset">Parolni o‘zgartirish</button>
     </div>
   </div><div class="login-foot" id="login-foot">Apteka 360 Desktop</div></div></div>
-  <div class="card" id="card-offline"><div class="inner"><div class="ico">A360</div><h1>Internet aloqasi yo‘q</h1>
-    <p>Apteka 360 serveriga ulanib bo‘lmadi. Tarmoq kabelini yoki Wi‑Fi ulanishini tekshiring va qayta urinib ko‘ring.</p>
-    <button class="btn" id="retry">Qayta urinish</button><div class="small" id="countdown"></div><div class="small" id="err"></div></div></div>
 </div>
 
 <div id="status">
-  <span><span class="dot" id="dot"></span><span id="st-conn">Ulanmoqda…</span></span>
+  <span><span class="dot" id="st-dot"></span><span id="st-conn">Ulanmoqda…</span></span>
   <span id="st-server">apteka.agrom24.uz</span>
+  <span id="st-sync"></span>
   <span class="right"><span id="st-host"></span><span id="st-clock"></span><span id="st-ver"></span></span>
 </div>
 
-<script>
-(function () {
-  var T = window.__TAURI__, core = T && T.core, ev = T && T.event;
-  var invoke = function (c, a) { return core ? core.invoke(c, a || {}) : Promise.reject(new Error('tauri yo‘q')); };
-  var D = window.__APTEKA_DESKTOP__ || {};
-  var PANEL = D.panel || 'https://apteka.agrom24.uz';
-  var $ = function (id) { return document.getElementById(id); };
+<div class="dlg-back" id="dlg-back"><div class="dlg" id="dlg"></div></div>
+<div id="toasts"></div>
 
-  // ---- Navigatsiya ro'yxati (panel marshrutlari) ----
-  var I = {
-    home: '<path d="M3 9.5 10 3l7 6.5V17h-4.5v-5h-5v5H3z"/>', branch: '<path d="M3 17h14M4 17V7l6-4 6 4v10M8 17v-5h4v5"/>',
-    people: '<circle cx="7.5" cy="7" r="2.5"/><circle cx="14" cy="8" r="2"/><path d="M2.5 16c0-3 2.2-5 5-5s5 2 5 5M12 15c.3-2 1.5-3.5 3.5-3.5 1.3 0 2.2.5 2.5 1.3"/>',
-    clock: '<circle cx="10" cy="10" r="7"/><path d="M10 6v4l2.5 2"/>', cal: '<rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2.5v3M13 2.5v3"/>',
-    cash: '<rect x="2.5" y="5" width="15" height="10" rx="2"/><circle cx="10" cy="10" r="2.2"/><path d="M5.5 10h.01M14.5 10h.01"/>',
-    chart: '<path d="M3 17h14M5 14V9M9 14V5M13 14v-3M17 14v-7"/>', wallet: '<path d="M3 6.5A1.5 1.5 0 0 1 4.5 5H15v2.5M3 6.5V15a2 2 0 0 0 2 2h12v-7H5a2 2 0 0 1-2-2z"/><circle cx="14" cy="13.5" r="1"/>',
-    pay: '<path d="M4 15 10 4l6 11M6.5 11.5h7"/>', pl: '<path d="M3 15l4-5 3 3 4-6 3 3"/><path d="M3 17h14"/>', tax: '<path d="M4 4h12v13l-3-2-3 2-3-2-3 2z"/><path d="M7 8h6M7 11h4"/>',
-    flow: '<path d="M3 6h9a3 3 0 0 1 0 6H8a3 3 0 0 0 0 6h9M14 3l3 3-3 3M6 15l-3 3 3 3"/>', forecast: '<path d="M3 15c2-4 4-6 7-6s5 3 7 1"/><path d="M3 17h14M14 7l3-1-1 3"/>',
-    cam: '<rect x="2.5" y="6" width="11" height="9" rx="2"/><path d="M13.5 9l4-2v7l-4-2"/>', live: '<circle cx="10" cy="10" r="2.5"/><path d="M5 5a7 7 0 0 0 0 10M15 5a7 7 0 0 1 0 10M7 7a4 4 0 0 0 0 6M13 7a4 4 0 0 1 0 6"/>',
-    wall: '<rect x="3" y="3" width="6" height="6" rx="1"/><rect x="11" y="3" width="6" height="6" rx="1"/><rect x="3" y="11" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/>',
-    ai: '<path d="M10 3l1.6 4.4L16 9l-4.4 1.6L10 15l-1.6-4.4L4 9l4.4-1.6z"/><path d="M16 14l.6 1.4L18 16l-1.4.6L16 18l-.6-1.4L14 16l1.4-.6z"/>',
-    check: '<circle cx="10" cy="10" r="7"/><path d="M6.5 10.5l2.5 2.5 4.5-5"/>', audit: '<path d="M5 3h7l3 3v11H5z"/><path d="M12 3v3h3M8 10h4M8 13h4"/>',
-    expire: '<path d="M10 3v3M6 4l1 2M14 4l-1 2"/><circle cx="10" cy="12" r="5"/><path d="M10 10v2l1.5 1"/>', truck: '<path d="M2.5 5h9v8h-9zM11.5 8h3.5l2.5 3v2h-6z"/><circle cx="6" cy="14" r="1.5"/><circle cx="14" cy="14" r="1.5"/>',
-    doctor: '<circle cx="10" cy="6" r="3"/><path d="M4 17c0-3 2.7-5 6-5s6 2 6 5M10 12v5M8.5 15h3"/>', report: '<path d="M4 3h9l3 3v11H4z"/><path d="M7 9h6M7 12h6M7 15h4"/>',
-    bell: '<path d="M5 14h10l-1.5-2V8.5a3.5 3.5 0 0 0-7 0V12z"/><path d="M8.5 16.5a1.5 1.5 0 0 0 3 0"/>', gear: '<circle cx="10" cy="10" r="2.5"/><path d="M10 3v2M10 15v2M3 10h2M15 10h2M5 5l1.4 1.4M13.6 13.6 15 15M5 15l1.4-1.4M13.6 6.4 15 5"/>',
-    users: '<circle cx="10" cy="7" r="3"/><path d="M4 17c0-3 2.7-5 6-5s6 2 6 5"/>', key: '<circle cx="7" cy="12" r="3.5"/><path d="M9.5 9.5 17 2M14 5l2 2M12 7l2 2"/>',
-    health: '<path d="M3 10h4l2-4 2 8 2-4h4"/>', module: '<rect x="3" y="3" width="6" height="6" rx="1"/><rect x="11" y="3" width="6" height="6" rx="1"/><rect x="3" y="11" width="6" height="6" rx="1"/><path d="M14 11v6M11 14h6"/>'
-  };
-  var NAV = [
-    { group: 'Asosiy' },
-    { path: '/dashboard', label: 'Bosh sahifa', icon: 'home', alias: ['/'] },
-    { path: '/branches', label: 'Filiallar', icon: 'branch' },
-    { path: '/employees', label: 'Xodimlar', icon: 'people' },
-    { path: '/attendance', label: 'Davomat', icon: 'clock' },
-    { path: '/schedule', label: 'Ish jadvali', icon: 'cal' },
-    { group: 'Moliya' },
-    { path: '/cash', label: 'Kassa', icon: 'cash' },
-    { path: '/fom', label: 'FOM hisobot', icon: 'chart' },
-    { path: '/expenses', label: 'Xarajatlar', icon: 'wallet' },
-    { path: '/tolovlar', label: 'To‘lovlar', icon: 'pay' },
-    { path: '/payroll', label: 'Oylik maosh', icon: 'users' },
-    { path: '/pnl', label: 'Foyda va zarar', icon: 'pl' },
-    { path: '/cashflow', label: 'Pul oqimi', icon: 'flow' },
-    { path: '/soliq', label: 'Soliq', icon: 'tax' },
-    { path: '/forecast', label: 'Prognoz', icon: 'forecast' },
-    { group: 'Nazorat' },
-    { path: '/cameras', label: 'Kameralar', icon: 'cam' },
-    { path: '/live', label: 'Jonli ko‘rish', icon: 'live' },
-    { path: '/videowall', label: 'Video devor', icon: 'wall' },
-    { path: '/ai', label: 'AI hodisalar', icon: 'ai' },
-    { path: '/approvals', label: 'Tasdiqlashlar', icon: 'check' },
-    { path: '/audit', label: 'Audit jurnali', icon: 'audit' },
-    { path: '/sroklar', label: 'Muddatlar', icon: 'expire' },
-    { group: 'Ma‘lumotnoma' },
-    { path: '/suppliers', label: 'Ta‘minotchilar', icon: 'truck' },
-    { path: '/doctors', label: 'Shifokorlar', icon: 'doctor' },
-    { path: '/reports', label: 'Hisobotlar', icon: 'report' },
-    { path: '/analytics', label: 'Analitika', icon: 'chart' },
-    { path: '/health', label: 'Tizim holati', icon: 'health' }
-  ];
-  var FOOT = [
-    { path: '/notifications', label: 'Bildirishnomalar', icon: 'bell' },
-    { path: '/users', label: 'Foydalanuvchilar', icon: 'users' },
-    { path: '/roles', label: 'Rollar', icon: 'key' },
-    { path: '/modules', label: 'Modullar', icon: 'module' },
-    { path: '/settings', label: 'Sozlamalar', icon: 'gear' }
-  ];
-  var ALL = [];
-  function renderNav(list, host) {
-    var g = 'Apteka 360';
-    list.forEach(function (it) {
-      if (it.group) { g = it.group; var d = document.createElement('div'); d.className = 'nav-group'; d.textContent = it.group; host.appendChild(d); return; }
-      it.group_label = g; ALL.push(it);
-      var b = document.createElement('button'); b.className = 'nav-item'; b.title = it.label; b.dataset.path = it.path;
-      b.innerHTML = '<svg viewBox="0 0 20 20">' + (I[it.icon] || I.home) + '</svg><span class="lbl">' + it.label + '</span>';
-      b.onclick = function () { go(it.path); };
-      it.el = b; host.appendChild(b);
-    });
-  }
-  renderNav(NAV, $('navlist')); FOOT.forEach(function (f) { f.group_label = 'Tizim'; }); renderNav(FOOT, $('navfoot'));
-
-  function go(path) { invoke('panel_navigate', { path: path }); }
-  function setActive(url) {
-    var p = '/'; try { p = new URL(url).pathname; } catch (e) {}
-    var found = null;
-    ALL.forEach(function (it) { it.el.classList.remove('active'); });
-    ALL.forEach(function (it) { if (p === it.path || p.indexOf(it.path + '/') === 0 || (it.alias || []).indexOf(p) >= 0) { if (!found || it.path.length > found.path.length) found = it; } });
-    if (found) { found.el.classList.add('active'); $('crumb-group').textContent = found.group_label; $('crumb-page').textContent = found.label; }
-    else { $('crumb-group').textContent = 'Apteka 360'; $('crumb-page').textContent = p === '/login' ? 'Tizimga kirish' : p; }
-    var isLogin = p === '/login' || p.indexOf('/login/') === 0;
-    document.body.classList.toggle('bare', online === true && isLogin);
-    if (!isLogin) { clearTimeout(loginTimer); if (loginShown) { loginShown = false; card(null); showPanel(true); } }
-    layout();
-  }
-
-  // ---- Panel joylashuvi: #content maydoni → Rust ----
-  var panelVisible = null, online = null;
-  function layout() {
-    var r = $('content').getBoundingClientRect();
-    invoke('set_panel_bounds', { x: r.left, y: r.top, width: r.width, height: r.height });
-  }
-  new ResizeObserver(layout).observe($('content'));
-  window.addEventListener('resize', layout);
-  function showPanel(v) {
-    if (panelVisible === v) return; panelVisible = v;
-    invoke('set_panel_visible', { visible: v }); if (v) layout();
-  }
-
-  // ---- Ulanish / offline ----
-  var timer = null, left = 0;
-  function card(id) { ['card-loading', 'card-offline', 'card-login'].forEach(function (c) { $(c).classList.toggle('show', c === id); }); }
-  var loginShown = false, loginTimer = null;
-  function setConn(ok, msg) {
-    online = ok; $('dot').classList.toggle('off', !ok); $('st-conn').textContent = ok ? 'Serverga ulangan' : 'Aloqa yo‘q';
-    if (ok) { if (!loginShown) { card(null); showPanel(true); } }
-    else { document.body.classList.remove('bare'); showPanel(false); card('card-offline'); $('err').textContent = msg ? 'Tafsilot: ' + msg : ''; left = 15; tick(); clearInterval(timer); timer = setInterval(tick, 1000); }
-  }
-  function tick() { $('countdown').textContent = left > 0 ? 'Avtomatik qayta urinish: ' + left + ' s' : ''; if (left-- <= 0) { clearInterval(timer); attempt(); } }
-  function attempt(reload) {
-    clearInterval(timer); if (online !== true) { card('card-loading'); $('st-conn').textContent = 'Ulanmoqda…'; }
-    invoke('check_online').then(function (ok) {
-      if (ok) { if (online !== true || reload) invoke('panel_reload'); setConn(true); }
-      else setConn(false, 'server javob bermadi');
-    }).catch(function (e) { setConn(false, String(e && e.message || e)); });
-  }
-  $('retry').onclick = function () { attempt(true); };
-  window.addEventListener('online', function () { attempt(true); });
-  window.addEventListener('offline', function () { setConn(false, 'tarmoq uzildi'); });
-
-  // ---- Buyruqlar paneli ----
-  $('back').onclick = function () { invoke('panel_back'); };
-  $('fwd').onclick = function () { invoke('panel_forward'); };
-  $('reload').onclick = function () { attempt(true); };
-  $('fs').onclick = function () { invoke('toggle_fullscreen'); };
-  $('zoom').onclick = function () { invoke('zoom_step', { delta: 0 }); };
-  $('burger').onclick = function () { document.body.classList.toggle('nav-compact'); try { localStorage.setItem('nav-compact', document.body.classList.contains('nav-compact') ? '1' : '0'); } catch (e) {} };
-  try { if (localStorage.getItem('nav-compact') === '1') document.body.classList.add('nav-compact'); } catch (e) {}
-  window.addEventListener('keydown', function (e) {
-    if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) { e.preventDefault(); $('burger').click(); }
-    if ((e.ctrlKey || e.metaKey) && (e.key === 'q' || e.key === 'Q')) { e.preventDefault(); invoke('quit_app'); }
-    if (e.altKey && e.key === 'Home') { e.preventDefault(); go('/dashboard'); }
-  });
-
-  // ---- «⋯» menyu ----
-  var prefs = { autostart: false, close_to_tray: true }, compact = true;
-  try { compact = localStorage.getItem('panel-compact') !== '0'; } catch (e) {}
-  invoke('get_prefs').then(function (p) { prefs = p; }).catch(function () {});
-  $('more').onclick = function (e) {
-    var r = e.currentTarget.getBoundingClientRect();
-    invoke('show_more_menu', { x: r.left, y: r.bottom + 2, compact: compact });
-  };
-  function toggleCompact() { compact = !compact; try { localStorage.setItem('panel-compact', compact ? '1' : '0'); } catch (e) {} applyCompact(); }
-  function applyCompact() { invoke('panel_eval_compact', { on: compact }).catch(function () {}); }
-
-  // ---- API ko'prigi (panel webview konteksti orqali) ----
-  var pending = {};
-  function api(path, body) {
-    return new Promise(function (resolve, reject) {
-      var id = 'r' + Date.now() + Math.random().toString(36).slice(2, 7);
-      var t = setTimeout(function () { delete pending[id]; reject({ error: 'Server javob bermadi. Qayta urinib ko‘ring.', code: 'timeout' }); }, 20000);
-      pending[id] = function (r) { clearTimeout(t); if (r.status >= 200 && r.status < 300) resolve(r.body || {}); else reject(r.body && r.body.error ? r.body : { error: 'Server xatosi: ' + r.status, code: 'unavailable' }); };
-      invoke('panel_api', { id: id, path: path, body: body || {} }).catch(function (e) { clearTimeout(t); delete pending[id]; reject({ error: String(e), code: 'bridge' }); });
-    });
-  }
-  function deviceId() { try { var id = localStorage.getItem('a360-device-id'); if (!id) { id = crypto.randomUUID(); localStorage.setItem('a360-device-id', id); } return id; } catch (e) { return 'desktop'; } }
-
-  // ---- Native login ----
-  var L = (function () {
-    var challenge = null, device = null, resendAt = 0, timerR = null;
-    function step(id) { ['s-creds', 's-otp', 's-device', 's-forgot', 's-reset'].forEach(function (s) { $(s).classList.toggle('show', s === id); });
-      var f = { 's-creds': 'f-login', 's-otp': 'f-otp', 's-forgot': 'f-flogin', 's-reset': 'f-rcode' }[id]; if (f) setTimeout(function () { $(f).focus(); }, 50); }
-    function busy(b) { $('login-box').classList.toggle('busy', b); }
-    function err(id, msg) { $(id).textContent = msg || ''; }
-    function fail(e) { return (e && e.error) || (e && e.message) || String(e); }
-    function startResend(sec) {
-      resendAt = Date.now() + sec * 1000; clearInterval(timerR);
-      function paint() { var left = Math.max(0, Math.ceil((resendAt - Date.now()) / 1000)); var txt = left > 0 ? 'Kodni qayta yuborish (' + left + ' s)' : 'Kodni qayta yuborish';
-        $('a-resend').textContent = txt; $('a-resend2').textContent = txt; if (left <= 0) clearInterval(timerR); }
-      paint(); timerR = setInterval(paint, 1000);
-    }
-    function reset() { challenge = null; device = null; ['e-creds', 'e-otp', 'e-device', 'e-forgot', 'e-reset'].forEach(function (i) { err(i); }); $('f-pass').value = ''; $('f-otp').value = ''; busy(false); step('s-creds'); }
-    function done() { busy(false); loginShown = false; card('card-loading'); invoke('panel_navigate', { path: '/login' }); }
-
-    $('b-login').onclick = function () {
-      var login = $('f-login').value.trim(), pass = $('f-pass').value;
-      if (!login || !pass) { err('e-creds', 'Login va parolni kiriting.'); return; }
-      err('e-creds'); busy(true);
-      api('/v1/auth/login', { login: login, password: pass }).then(function (r) {
-        challenge = r.challengeId; busy(false); $('f-otp').value = ''; err('e-otp'); startResend(r.resendInSec || 60); step('s-otp');
-      }).catch(function (e) { busy(false); err('e-creds', fail(e)); });
-    };
-    $('b-otp').onclick = function () {
-      var code = $('f-otp').value.replace(/\D/g, ''); if (code.length !== 6) { err('e-otp', '6 xonali kodni kiriting.'); return; }
-      err('e-otp'); busy(true);
-      api('/v1/auth/otp', { challengeId: challenge, code: code, deviceId: $('f-remember').checked ? deviceId() : ('tmp-' + Math.random().toString(36).slice(2)) }).then(function (r) {
-        if (r.newDevice) { device = r.newDevice; $('d-device').textContent = device.device || ''; $('d-loc').textContent = device.location || ''; $('d-ip').textContent = device.ip || ''; busy(false); step('s-device'); }
-        else done();
-      }).catch(function (e) { busy(false); err('e-otp', fail(e)); if (e && e.details && e.details.attemptsLeft === 0) { step('s-creds'); err('e-creds', fail(e)); } });
-    };
-    $('b-trust').onclick = function () { busy(true); api('/v1/auth/device', { confirmId: device.confirmId, decision: 'trust' }).then(done).catch(function (e) { busy(false); err('e-device', fail(e)); }); };
-    $('b-block').onclick = function () { busy(true); api('/v1/auth/device', { confirmId: device.confirmId, decision: 'block' }).catch(function () {}).then(function () { reset(); err('e-creds', 'Qurilma bloklandi. Agar bu siz bo‘lmasangiz, parolni o‘zgartiring.'); }); };
-    function resend() { if (Date.now() < resendAt || !challenge) return; busy(true); api('/v1/auth/otp/resend', { challengeId: challenge }).then(function (r) { busy(false); startResend(r.resendInSec || 60); }).catch(function (e) { busy(false); err($('s-otp').classList.contains('show') ? 'e-otp' : 'e-reset', fail(e)); if (e && e.details && e.details.resendInSec) startResend(e.details.resendInSec); }); }
-    $('a-resend').onclick = resend; $('a-resend2').onclick = resend;
-    $('a-forgot').onclick = function () { $('f-flogin').value = $('f-login').value; err('e-forgot'); step('s-forgot'); };
-    $('a-back1').onclick = reset; $('a-back2').onclick = reset; $('a-back3').onclick = function () { step('s-forgot'); };
-    $('b-forgot').onclick = function () {
-      var login = $('f-flogin').value.trim(); if (!login) { err('e-forgot', 'Telefon yoki e-pochtani kiriting.'); return; }
-      busy(true); api('/v1/auth/password/forgot', { login: login }).then(function (r) { challenge = r.challengeId; busy(false); startResend(r.resendInSec || 60); step('s-reset'); }).catch(function (e) { busy(false); err('e-forgot', fail(e)); });
-    };
-    $('b-reset').onclick = function () {
-      var code = $('f-rcode').value.trim(), p1 = $('f-pw1').value, p2 = $('f-pw2').value;
-      if (code.length !== 6) { err('e-reset', '6 xonali kodni kiriting.'); return; }
-      if (p1.length < 8) { err('e-reset', 'Parol kamida 8 ta belgidan iborat bo‘lsin.'); return; }
-      if (p1 !== p2) { err('e-reset', 'Parollar mos emas.'); return; }
-      busy(true); api('/v1/auth/password/reset', { challengeId: challenge, code: code, password: p1 }).then(function () { reset(); $('f-login').value = $('f-flogin').value; err('e-creds', 'Parol o‘zgartirildi. Yangi parol bilan kiring.'); }).catch(function (e) { busy(false); err('e-reset', fail(e)); });
-    };
-    ['f-login', 'f-pass'].forEach(function (i) { $(i).addEventListener('keydown', function (e) { if (e.key === 'Enter') $('b-login').click(); }); });
-    $('f-otp').addEventListener('input', function () { this.value = this.value.replace(/\D/g, '').slice(0, 6); if (this.value.length === 6) $('b-otp').click(); });
-    $('f-otp').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('b-otp').click(); });
-    ['f-rcode', 'f-pw1', 'f-pw2'].forEach(function (i) { $(i).addEventListener('keydown', function (e) { if (e.key === 'Enter') $('b-reset').click(); }); });
-    $('f-flogin').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('b-forgot').click(); });
-    return { reset: reset };
-  })();
-
-  // ---- Rust hodisalari ----
-  if (ev) {
-    ev.listen('panel', function (e) {
-      var p = e.payload || {};
-      if (p.kind === 'navigate' || p.kind === 'started') { document.body.classList.add('loading'); setActive(p.url); }
-      if (p.kind === 'finished') {
-        document.body.classList.remove('loading'); setActive(p.url); if (!compact) applyCompact();
-        var path = ''; try { path = new URL(p.url).pathname; } catch (e) {}
-        if (online === true && (path === '/login' || path.indexOf('/login/') === 0)) {
-          clearTimeout(loginTimer);
-          loginTimer = setTimeout(function () { if (!loginShown) { loginShown = true; showPanel(false); card('card-login'); L.reset(); } }, 700);
-        }
-      }
-    });
-    ev.listen('network', function (e) { if (e.payload === false) setConn(false, 'tarmoq uzildi'); else attempt(true); });
-    ev.listen('zoom', function (e) { $('zoom').textContent = Math.round(e.payload) + '%'; });
-    ev.listen('prefs', function (e) { prefs = e.payload || prefs; });
-    ev.listen('api', function (e) { var r = e.payload || {}; var cb = pending[r.id]; if (cb) { delete pending[r.id]; cb(r); } });
-    ev.listen('menu', function (e) { if (e.payload === 'compact') toggleCompact(); });
-  }
-
-  // ---- Holat paneli ----
-  invoke('get_client_info').then(function (i) {
-    if (i.selftest) { setTimeout(function () { if (loginShown) { $('f-login').value = 'selftest@apteka360.uz'; $('f-pass').value = 'noto‘g‘ri-parol'; $('b-login').click(); } }, 4000); }
-    $('st-host').textContent = i.hostname; $('st-ver').textContent = 'v' + i.version; $('login-foot').textContent = 'Apteka 360 Desktop v' + i.version + '  ·  ' + i.hostname;
-    try { $('st-server').textContent = new URL(i.panel_url).host; } catch (e) {}
-  }).catch(function () {});
-  function clock() { var d = new Date(); $('st-clock').textContent = d.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' }) + '  ' + d.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }); }
-  clock(); setInterval(clock, 15000);
-
-  // Start
-  showPanel(false); layout(); attempt(false);
-})();
-</script>
+<script src="vendor/hls.light.min.js"></script>
+<script src="app.js"></script>
+<script src="screens.js"></script>
+<script>Apteka.start();</script>
 </body>
 </html>

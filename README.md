@@ -1,93 +1,95 @@
 # Apteka 360 — Desktop ilova (Windows / Linux)
 
-Apteka 360 dorixona tarmog‘i boshqaruv tizimining desktop qobig‘i. [Tauri 2](https://tauri.app) asosida qurilgan,
-**https://apteka.agrom24.uz** web panelini tizim WebView’ida (Windows — WebView2, Linux — WebKitGTK) ochadi.
-Ilova o‘zida frontend kodini saqlamaydi: panel yangilanganda desktop ilovani qayta chiqarish shart emas.
+Apteka 360 dorixona tarmog‘i boshqaruv tizimining **native desktop ilovasi**. [Tauri 2](https://tauri.app) asosida,
+Windows 11 Fluent Design uslubida: o‘z kirish oynasi, navigatsiya paneli, buyruqlar va holat paneli, Windows dialoglari.
+Asosiy ekranlar ilovaning o‘zida chiziladi va ma’lumotni **to‘g‘ridan-to‘g‘ri API’dan** (`https://api-apteka.agrom24.uz`) oladi;
+kam ishlatiladigan bo‘limlar hozircha web paneldan (`https://apteka.agrom24.uz`) ilova ichida ochiladi.
 
-## Arxitektura: native qobiq (0.1.0)
+## Skrinshotlar (Linux build, Xvfb, lokal dev API bilan)
 
-Ilova oddiy «web oynasi» emas — Windows 11 (Fluent Design) uslubidagi **native qobiq**:
+| Kirish | Bosh sahifa | Filiallar |
+|---|---|---|
+| ![](docs/shot-login.png) | ![](docs/shot-dashboard.png) | ![](docs/shot-branches.png) |
+| **Kassa (yopilish → «Tasdiqda»)** | **Tasdiqlash dialogi** | **Xodimlar** |
+| ![](docs/shot-cash-closed.png) | ![](docs/shot-dialog.png) | ![](docs/shot-employees.png) |
+| **Kameralar** | **Bildirishnomalar** | **Audit jurnali** |
+| ![](docs/shot-cameras.png) | ![](docs/shot-notifications.png) | ![](docs/shot-audit.png) |
+
+## Native ekranlar
+
+| Ekran | Nima qiladi | API |
+|---|---|---|
+| **Kirish** | login/parol → Telegram/SMS kod → yangi qurilmani tasdiqlash; parolni tiklash | `/v1/auth/*` |
+| **Bosh sahifa** | salomlashish, KPI kartalari (tushum, foyda, kassa, oylik fondi, xarajatlar… + sparkline), 30 kunlik tushum grafigi, ogohlantirishlar, filiallar jadvali, pul zaxirasi prognozi | `/v1/dashboard`, `/v1/branches`, `/v1/approvals` |
+| **Filiallar** | ro‘yxat + tafsilot: tushum (kechaga nisbatan), yalpi foyda, xarajat limiti, smena, kameralar, tashrif, konversiya, 30 kunlik grafik | `/v1/branches` |
+| **Xodimlar** | jadval, qidiruv, filial/holat filtri, xodim kartasi (oylik maydonlari rolga qarab) | `/v1/employees` |
+| **Kassa** | FOM bo‘yicha bugungi naqd/karta/QR, **kassani yopish** (FOM bilan farq, chegara, majburiy sabab), ziddiyat (409) dialogi, bugungi yopilishlar | `/v1/fomCashToday`, `/v1/settings`, `/v1/desktop`, `desk.cashClose`, `desk.resolveConflict` |
+| **Kameralar** | filial bo‘yicha guruhlangan kameralar, jonli ko‘rish (HLS, hls.js), SD/HD, **ovoz**, bosib turib **gapirish** (mikrofon → Edge) | `/v1/cameras`, `cameras.streamUrl`, `cameras.talk` |
+| **Tasdiqlashlar** | ro‘yxat + tafsilot (dalil, tavsiya, tarix), Tasdiqlash / O‘zgartirish so‘rash / Rad etish (izoh dialogi) | `/v1/approvals`, `approvals.decide` |
+| **Bildirishnomalar** | muhimlik bo‘yicha, o‘qilmaganlar soni nav-panelda (badge), o‘qilgan deb belgilash | `/v1/notifications`, `notifications.markRead|markAllRead` |
+| **Audit jurnali** | o‘zgarmas jurnal, qidiruv, «faqat sezgir» filtri | `/v1/audit` |
+
+Web paneldan ochiladigan bo‘limlar (nav-panelda ↗ belgisi): Davomat, Ish jadvali, FOM hisobot, Xarajatlar, To‘lovlar, Oylik,
+Foyda va zarar, Pul oqimi, Soliq, Prognoz, Video devor, AI hodisalar, Muddatlar, Ta’minotchilar, Shifokorlar, Hisobotlar,
+Analitika, Sozlamalar. Ular bosqichma-bosqich native ekranlarga o‘tkaziladi (`ui/screens.js` ga yangi ekran + `NAV` da `native: true`).
+
+## Arxitektura
 
 ```
-┌ Window «Apteka 360» ────────────────────────────────────────────────┐
-│ ☰ A360 Apteka 360 │ ‹ › ⟳  Apteka 360 / Kassa          100% ⛶ ⋯    │ ← buyruqlar paneli
-│ Asosiy            │────────────────────────────────────────────────│
-│  Bosh sahifa      │                                                │
-│  Filiallar        │     child-webview «panel»                      │
-│  Xodimlar …       │     https://apteka.agrom24.uz (kontent)        │
-│ Moliya            │                                                │
-│  Kassa, FOM …     │                                                │
-│ Nazorat           │                                                │
-│  Kameralar …      │                                                │
-│  Sozlamalar       │                                                │
-│ ● Serverga ulangan  apteka.agrom24.uz      KASSA-PC-01  23:45  v0.1.0 │ ← holat paneli
-└─────────────────────────────────────────────────────────────────────┘
+┌ Window «Apteka 360» (native sarlavha, menyu, tray) ───────────────────────────┐
+│ ☰ Apteka 360        │ ‹ › ⟳  Moliya › Kassa                    100%  ⛶  ⋯   │ ← buyruqlar paneli
+│ (BA) Bobur Aliyev   │──────────────────────────────────────────────────────── │
+│ [Bo‘lim qidirish ]  │                                                         │
+│ Asosiy              │   webview «shell» — ui/ (native ekranlar, kirish,       │
+│  Bosh sahifa        │   offline, dialoglar)  ── Rust `api` ──► API             │
+│  Filiallar …        │                                                         │
+│ Moliya ↗ …          │   webview «panel» — web panel (faqat ↗ bo‘limlar,       │
+│ Bildirishnomalar (3)│   yashirin holatda sessiya cookie’sini saqlaydi)        │
+│ ● Serverga ulangan  api-apteka.agrom24.uz  Yangilandi 19:22   KASSA-PC  v0.1.0  │ ← holat paneli
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- Bitta `Window` ichida ikkita child-webview (Tauri 2 multiwebview, `unstable` feature): `shell` — lokal `ui/index.html`
-  (yon panel, buyruqlar paneli, holat paneli, offline ekrani), `panel` — web panel, qobiq ko‘rsatgan maydonga joylashadi.
-- Yon panel panelning barcha bo‘limlariga olib boradi (`/dashboard`, `/cash`, `/cameras`, …); panelning o‘z yon paneli
-  **compact rejimda** yashiriladi (⋯ → «Panel navigatsiyasini yashirish» bilan qaytariladi). Login ekranida qobiq yashirinadi.
-- **Native login:** kirish ekrani web sahifa emas — qobiqning o‘zida (Fluent dialog): login/parol → Telegram/SMS kod → yangi
-  qurilmani tasdiqlash, parolni tiklash. API so‘rovlari `panel_api` ko‘prigi orqali **panel webview kontekstida** bajariladi
-  (origin `apteka.agrom24.uz`), shuning uchun httpOnly refresh-cookie web paneldagidek o‘rnatiladi va panel sessiyani o‘zi tiklaydi.
-  Panel `/login` ga qaytsa (chiqish, sessiya tugashi) qobiq yana native login ko‘rsatadi. `APTEKA_SELFTEST=1` (runtime) — ko‘prik diagnostikasi.
-- «⋯» — **native** Windows kontekst menyusi (Bosh sahifa, Qayta yuklash, Brauzerda ochish, Windows bilan ishga tushirish,
-  Yopganda trayga yig‘ish, To‘liq ekran, Dastur haqida (native dialog), Chiqish). Tizim tray ikonkasi, bitta nusxa, oyna holati.
-- Tugmalar: `F5`/`Ctrl+R` yangilash, `Alt+←/→` orqaga/oldinga, `Ctrl+±/0` masshtab, `F11` to‘liq ekran, `Ctrl+B` yon panel,
-  `Alt+Home` bosh sahifa, `Ctrl+Q` chiqish. Tizim mavzusi (och/to‘q) avtomatik.
-- **Linux cheklovi:** WebKitGTK’da Tauri child-webview’larni GtkBox’ga ketma-ket joylaydi (pozitsiya ishlamaydi), shuning uchun
-  Linux’da zaxira rejim: panel butun oynani egallaydi, qobiq faqat offline bo‘lganda ko‘rinadi. Windows (WebView2) da to‘liq qobiq.
+- **Ikki child-webview** (Tauri 2 multiwebview): `shell` — lokal `ui/` (`index.html`, `app.css`, `app.js` — yadro, `screens.js` — ekranlar,
+  `vendor/hls.light.min.js`); `panel` — web panel, faqat web bo‘lim tanlanganda ko‘rinadi.
+- **Sessiya:** kirish so‘rovlari `panel_api` ko‘prigi orqali panel kontekstida (origin `apteka.agrom24.uz`) bajariladi, shuning uchun
+  httpOnly refresh-cookie web paneldagidek saqlanadi (keyingi ishga tushishda avtomatik kiradi). Access token panel init-skriptida
+  ushlanadi (`report_token`) va Rust xotirasida turadi; native ekranlar API’ga Rust (`api` buyrug‘i, reqwest) orqali murojaat qiladi —
+  har so‘rovda `Authorization`, `X-Client: desktop/<versiya>`, `X-Client-Device: <kompyuter> - Desktop ilova`, buyruqlarda `Idempotency-Key`.
+  401 → ko‘prik orqali refresh → qayta urinish; refresh ham 401 → kirish oynasi. Token diskka yozilmaydi.
+- **Native boshqaruv:** «⋯» va hisob kartasi — Windows kontekst menyusi (Bosh sahifa, Qayta yuklash, Brauzerda ochish, Windows bilan
+  ishga tushirish, Yopganda trayga yig‘ish, To‘liq ekran, Dastur haqida, Hisobdan chiqish, Chiqish). Tray ikonkasi, bitta nusxa, oyna holati.
+- **Klaviatura:** `Ctrl+F` bo‘lim qidirish, `Ctrl+B` nav-panel, `F5`/`Ctrl+R` yangilash, `Alt+←/→` orqaga/oldinga, `Alt+Home` bosh sahifa,
+  `Ctrl+±/0` masshtab, `F11` to‘liq ekran, `Ctrl+Q` chiqish. Och/to‘q mavzu Windows sozlamasiga qarab.
+- **Linux cheklovi:** WebKitGTK’da child-webview pozitsiyasi ishlamaydi — Linux’da web bo‘lim ochilganda panel butun oynani egallaydi
+  (pastki chapdagi «◂ Apteka 360» tugmasi ilovaga qaytaradi). Native ekranlar Linux’da ham to‘liq ishlaydi.
 
-## Imkoniyatlar
+## Imkoniyatlar (qobiq)
 
 | Imkoniyat | Qayerda |
 |---|---|
-| Oyna «Apteka 360», ikonka, 1366×860 (minimal 1280×800), markazda; oyna o‘lchami/joyi eslab qolinadi | `src-tauri/src/lib.rs` → `setup`, `tauri-plugin-window-state` |
-| Tizim tray ikonkasi («Apteka 360 ni ochish», «Chiqish»); oynani yopganda trayga yig‘iladi (Fayl → «Yopganda trayga yig‘ish» bilan o‘chiriladi) | `lib.rs` → `build_tray` |
-| Bitta nusxa: ikkinchi marta ochilsa mavjud oyna ko‘tariladi | `tauri-plugin-single-instance` |
-| Windows bilan avtomatik ishga tushish (Fayl menyusida belgi) | `tauri-plugin-autostart` |
-| O‘zbek/rus/ingliz tilidagi NSIS o‘rnatuvchi, WebView2 bootstrapper ichida | `tauri.conf.json → bundle.windows` |
-| Menyu: Fayl (Bosh sahifa `Alt+Home`, Qayta yuklash `Ctrl+R`, Chiqish `Ctrl+Q`), `Alt+←/→` orqaga/oldinga, Ko‘rinish (Kattalashtirish `Ctrl+=`, Kichraytirish `Ctrl+-`, Asl o‘lcham `Ctrl+0`, To‘liq ekran `F11`), Yordam | `src-tauri/src/lib.rs` → `build_menu` |
-| Offline bo‘lsa o‘zbekcha xato ekrani, «Qayta urinish» tugmasi, 15 s da avtomatik qayta urinish | `ui/index.html` (ishga tushishda), `src-tauri/src/inject.js` (panel ichida aloqa uzilsa overlay) |
-| API so‘rovlariga `X-Client: desktop/<versiya>` va `X-Client-Device: <kompyuter nomi> · Desktop ilova` | `src-tauri/src/inject.js` (fetch/XHR), `lib.rs` (dastlabki navigatsiya sarlavhalari) |
-| Kamera ovozi (HLS audio, autoplay) va «Gapirish» (mikrofon, getUserMedia) — panel domeni uchun ruxsat avtomatik | `lib.rs` → `on_permission_request`, `is_panel_origin` |
+| Oyna «Apteka 360», ikonka, 1366×860 (minimal 1280×800), o‘lcham/joy eslab qolinadi | `src-tauri/src/lib.rs` → `setup`, `tauri-plugin-window-state` |
+| Tray ikonkasi, yopganda trayga yig‘ish, bitta nusxa, Windows bilan ishga tushish | `lib.rs` → `build_tray`, single-instance, autostart |
+| Offline: o‘zbekcha ekran, «Qayta urinish», 15 s da avtomatik qayta urinish | `ui/app.js` → `setConn` |
+| Kamera ovozi va «Gapirish»: mikrofon/autoplay ruxsati (shell va panel domeni uchun) | `lib.rs` → `on_permission_request` |
 | Avto-yangilanish uchun joy (`updater` feature) | `lib.rs` → `mod updater`, `src-tauri/tauri.updater.conf.json` |
-| Windows EXE (NSIS) + MSI, Linux `.deb` / `.rpm` / `.AppImage` | `.github/workflows/build.yml`, `docker/build.sh` |
+| Windows EXE (NSIS, rus/ingliz) + MSI, Linux `.deb` / `.rpm` / `.AppImage` | `.github/workflows/build.yml`, `docker/build.sh` |
 
-### X-Client sarlavhasi qanday qo‘shiladi
+### X-Client sarlavhalari
 
-`docs/API-MOBILE-DESKTOP.md` (backend) har so‘rovda `X-Client: desktop/<versiya>` va `X-Client-Device` talab qiladi.
-Web panel kodi desktop haqida bilmaydi, shuning uchun ilova har bir sahifaga **init-skript** kiritadi
-(`src-tauri/src/inject.js`): u `window.fetch` va `XMLHttpRequest` ni o‘rab, `*.agrom24.uz` ga ketayotgan har bir
-so‘rovga ikkala sarlavhani qo‘shadi. API CORS allow-list’ida bu sarlavhalar bor (preflight tekshirilgan:
-`access-control-allow-headers: ... X-Client, X-Client-Device ...`), shuning uchun brauzer ularni o‘tkazadi.
+`docs/API-MOBILE-DESKTOP.md` (backend) talabi: native ekranlarning barcha so‘rovlari Rust orqali ketadi va ikkala sarlavha har doim
+qo‘shiladi. Web panel ichidagi so‘rovlarga init-skript (`src-tauri/src/inject.js`) fetch/XHR’ni o‘rab qo‘shadi (CORS ruxsat beradi).
+Cheklov: web panelning `<img>`/`<video>`/HLS so‘rovlariga va dastlabki HTML navigatsiyaga sarlavha qo‘shib bo‘lmaydi.
+`X-Client-Device` faqat ASCII (`KASSA-PC-01 - Desktop ilova`): «·» belgisi HTTP sarlavhada buziladi.
 
-**Cheklovlar:**
-- Tauri 2.12 da dastlabki (HTML) navigatsiya so‘roviga maxsus sarlavha qo‘shish API’si yo‘q; sarlavhalar faqat JS so‘rovlarida.
-- Sarlavhalar web panelning *JS orqali* yuboradigan so‘rovlariga qo‘shiladi. Agar panel `<img>`, `<video>`, HLS segmentlari
-  yoki Service Worker orqali API ga murojaat qilsa, ularga sarlavha qo‘shilmaydi (brauzer imkon bermaydi).
-- Agar web panel fetch’ni sahifa yuklanishidan *oldin* o‘z nusxasiga saqlab olsa (odatda bunday emas), o‘rash ishlamaydi.
-- Panelning o‘zi (`window.__APTEKA_DESKTOP__` obyekti bor) desktop ichida ekanini aniqlab, sarlavhani o‘zi qo‘shishi ham mumkin —
-  bu eng ishonchli yo‘l; init-skript mavjud sarlavhani qayta yozmaydi.
+## Tayyor artefaktlar (lokal build, 2026-10-20)
 
-## Skrinshotlar (Linux build, Xvfb)
+Build Docker ichida (`docker/build.sh`), natijalar `dist/` da (`.gitignore` da — repoga kirmaydi):
 
-| Native login (API javobi bilan) | Native qobiq (offline holat) | Media ruxsat sinovi |
-|---|---|---|
-| ![](docs/screenshot-native-login.png) | ![](docs/screenshot-shell-offline.png) | ![](docs/screenshot-media-test.png) |
-
-Windows’dagi to‘liq qobiq (yon panel + panel yonma-yon) skrinshoti Windows kompyuterda olinishi kerak — Linux’da child-webview joylashuvi ishlamaydi.
-
-## Tayyor artefaktlar (lokal build, 2026-10-19)
-
-Build Docker ichida qilingan (`docker/build.sh`), natijalar `dist/` da (`.gitignore` da — repoga kirmaydi):
-
-| Fayl | Hajm | Izoh |
-|---|---|---|
-| `dist/windows/Apteka 360_0.1.0_x64-setup.exe` | 2.2 MB | **Windows o‘rnatuvchi** (NSIS, x64), Linux’da `cargo-xwin` bilan cross-compile qilingan, imzolanmagan |
-| `dist/windows/apteka360-desktop.exe` | 7 MB | o‘rnatuvchisiz ilova (portable; WebView2 runtime kerak) |
-| `dist/linux/Apteka 360_0.1.0_amd64.deb` / `.rpm` / `.AppImage` | 3.3 / 3.3 / 104 MB | Linux |
+| Fayl | Izoh |
+|---|---|
+| `dist/windows/Apteka 360_0.1.0_x64-setup.exe` | **Windows o‘rnatuvchi** (NSIS, x64), Linux’da `cargo-xwin` bilan cross-compile, imzolanmagan |
+| `dist/windows/apteka360-desktop.exe` | o‘rnatuvchisiz ilova (portable; WebView2 runtime kerak) |
+| `dist/linux/Apteka 360_0.1.0_amd64.deb` / `.rpm` | Linux |
 
 MSI faqat GitHub Actions (`windows-latest`) orqali chiqadi.
 
@@ -95,20 +97,36 @@ MSI faqat GitHub Actions (`windows-latest`) orqali chiqadi.
 
 ```
 apteka360-desktop/
-├─ ui/index.html                 # lokal loader: ulanishni tekshiradi, keyin panelga o‘tadi; offline ekrani
+├─ ui/                           # native qobiq (webview «shell»)
+│  ├─ index.html, app.css        # tuzilma va Fluent uslublari (och/to‘q)
+│  ├─ app.js                     # yadro: navigatsiya, sessiya, API, dialog/toast, kirish
+│  ├─ screens.js                 # ekranlar: dashboard, branches, employees, cash, cameras, approvals, notifications, audit
+│  └─ vendor/hls.light.min.js    # hls.js 1.5.20 (Apache-2.0, vendor/hls.LICENSE)
 ├─ src-tauri/
 │  ├─ Cargo.toml                 # Rust bog‘liqliklari; `updater` feature
-│  ├─ tauri.conf.json            # oyna, bundle (nsis, msi, deb, rpm, appimage), ikonkalar
+│  ├─ tauri.conf.json            # bundle (nsis, msi, deb, rpm, appimage), ikonkalar
 │  ├─ tauri.updater.conf.json    # avto-yangilanish konfiguratsiyasi (--config bilan ulanadi)
-│  ├─ capabilities/              # ruxsatlar: default.json (lokal sahifa), remote.json (apteka.agrom24.uz)
-│  ├─ icons/                     # `cargo tauri icon` yaratgan ikonkalar (.ico, .icns, .png)
+│  ├─ capabilities/              # shell.json (lokal qobiq), remote.json (apteka.agrom24.uz)
 │  └─ src/{main.rs,lib.rs,inject.js}
-├─ assets/app-icon.png           # manba ikonka (1024×1024)
+├─ docs/test/                    # sinov: fake-panel.py (web panel taqlidi), no-hsts-proxy.py, media-test.html
 ├─ docker/                       # Linux’da Docker orqali build (sudo kerak emas)
-│  ├─ Dockerfile.builder
-│  └─ build.sh
 └─ .github/workflows/build.yml   # GitHub Actions: windows-latest (EXE+MSI) va ubuntu (deb/rpm/AppImage)
 ```
+
+## Lokal sinov (dev API bilan)
+
+```bash
+# 1) backend: apteka360-backend/apps/api — seed rejimi, OTP 123456
+PORT=4100 HOST=127.0.0.1 CORS_ORIGINS=http://127.0.0.1:4200 ../../node_modules/.bin/tsx src/main.ts
+# 2) HSTS sarlavhasini olib tashlovchi proksi va web panel taqlidi
+python3 -I docs/test/no-hsts-proxy.py 4101 127.0.0.1:4100
+python3 -I docs/test/fake-panel.py http://127.0.0.1:4101
+# 3) sinov build (faqat .deb) va avtomatik kirish (owner@apteka360.uz)
+BUNDLES=deb APTEKA_PANEL_URL=http://127.0.0.1:4200 APTEKA_API_URL=http://127.0.0.1:4101 docker/build.sh linux
+APTEKA_DEBUG=1 APTEKA_SELFTEST=1 APTEKA_SELFTEST_ROUTE=cash docker/.cache/target/release/apteka360-desktop
+```
+
+`APTEKA_SELFTEST*` va `APTEKA_DEBUG` faqat diagnostika uchun (dev OTP faqat `NODE_ENV != production` serverda ishlaydi).
 
 ## Build
 
@@ -148,7 +166,7 @@ cargo install tauri-cli --version "^2"
 cargo tauri build            # src-tauri\target\release\bundle\nsis\*.exe va msi\*.msi
 ```
 
-### Panel manzilini o‘zgartirish
+### Panel / API manzilini o‘zgartirish
 
 Kompilyatsiya vaqtida: `APTEKA_PANEL_URL=https://staging.example.uz APTEKA_API_URL=https://api-staging.example.uz docker/build.sh linux`
 (yoki `cargo tauri build` oldidan shu env). Standart — `https://apteka.agrom24.uz`.
@@ -211,8 +229,9 @@ two-way audio) tugmalari bor. Desktop qobiqda buning uchun:
 
 ## Ma’lum cheklovlar
 
-- Panel ichida (SPA) aloqa uzilsa overlay `navigator.onLine` hodisalariga tayanadi; Wi‑Fi ulangan, lekin internet yo‘q
-  holatda overlay chiqmasligi mumkin — bunda panelning o‘z xato xabari ko‘rinadi, `Ctrl+R` / «Qayta yuklash» loader orqali
-  qayta tekshiradi.
-- Linux’dan cross-compile qilingan EXE imzolanmagan va MSI bermaydi.
-- Kamera jonli ko‘rish panelda HLS (hls.js) orqali — WebView2/WebKitGTK’da MSE bor, qo‘shimcha sozlash kerak emas.
+- **Windows’da real sinov qilinmagan:** EXE Linux’da cross-compile qilingan; native ekranlar, kirish va kassa yopish Linux build’da
+  lokal dev API bilan oxirigacha sinalgan. Windows’da child-webview joylashuvi (web bo‘limlar) va WebView2 mikrofon dialogi tekshirilishi kerak.
+- Kamera jonli ko‘rish va «Gapirish» haqiqiy kamera/Edge bilan sinalmagan (lokal seed’da `cameras` moduli o‘chiq).
+- Kassa yopishning oflayn navbati (SQLite, `docs/API-MOBILE-DESKTOP.md` 3.4) hali yo‘q: aloqa bo‘lmasa yopish yuborilmaydi va xato ko‘rsatiladi.
+- Ko‘p bo‘limlar hali web paneldan ochiladi (↗). Ular native ekranlarga bosqichma-bosqich o‘tkaziladi.
+- EXE imzolanmagan (SmartScreen ogohlantiradi); MSI faqat CI’dan.

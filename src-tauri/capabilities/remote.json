@@ -23,6 +23,8 @@
     "allow-panel-forward",
     "allow-report-network",
     "allow-get-client-info",
-    "allow-api-result"
+    "allow-api-result",
+    "allow-report-token",
+    "allow-shell-home"
   ]
 }

@@ -29,15 +29,32 @@
   function shouldTag(url) {
     try { var u = new URL(url, location.href); return /(^|\.)agrom24\.uz$/i.test(u.hostname); } catch (e) { return false; }
   }
+  // --- Token ushlash: native ekranlar qobiqda shu sessiya bilan ishlaydi (refresh-cookie panelda qoladi) ---
+  var API_HOST = ''; try { API_HOST = new URL('__API_URL__').host; } catch (e) {}
+  var lastToken = null;
+  function report(tok) { if (tok === lastToken) return; lastToken = tok; invoke('report_token', { token: tok }).catch(function () {}); }
+  function isApi(url) { try { var u = new URL(url, location.href); return u.host === API_HOST || shouldTag(url); } catch (e) { return false; } }
   var origFetch = window.fetch;
   if (typeof origFetch === 'function') {
     window.fetch = function (input, init) {
+      var req;
       try {
-        var req = new Request(input, init);
-        if (shouldTag(req.url)) {
+        req = new Request(input, init);
+        if (isApi(req.url)) {
           if (!req.headers.has('X-Client')) req.headers.set('X-Client', CLIENT);
           if (!req.headers.has('X-Client-Device')) req.headers.set('X-Client-Device', DEVICE);
-          return origFetch.call(this, req);
+          var a = req.headers.get('Authorization'); if (a && a.indexOf('Bearer ') === 0) report(a.slice(7));
+          var path = ''; try { path = new URL(req.url).pathname; } catch (e) {}
+          var p = origFetch.call(this, req);
+          if (/^\/v1\/auth\/(otp|device|refresh|logout)$/.test(path)) {
+            p.then(function (r) {
+              if (path === '/v1/auth/logout') { if (r.ok || r.status === 401) report(null); return; }
+              if (path === '/v1/auth/refresh' && r.status === 401) { report(null); return; }
+              if (!r.ok) return;
+              r.clone().json().then(function (b) { if (b && b.accessToken) report(b.accessToken); }).catch(function () {});
+            }).catch(function () {});
+          }
+          return p;
         }
       } catch (e) {}
       return origFetch.call(this, input, init);
@@ -65,6 +82,18 @@
   window.__aptekaSetCompact = function (on) { try { localStorage.setItem('desktop-compact', on ? '1' : '0'); } catch (e) {} applyCompact(); };
   if (document.head) applyCompact(); else document.addEventListener('DOMContentLoaded', applyCompact);
   new MutationObserver(function () { if (!document.getElementById(STYLE_ID)) applyCompact(); }).observe(document.documentElement, { childList: true });
+
+  // --- 2b) Linux zaxira rejimi: panel butun oynada — ilovaga qaytish tugmasi ---------------------
+  if (/Linux/i.test(navigator.platform || '') && !/Android/i.test(navigator.userAgent)) {
+    var addBack = function () {
+      if (!document.body || document.getElementById('apteka-home')) return;
+      if (/^\/login/.test(location.pathname)) return;
+      var b = document.createElement('button'); b.id = 'apteka-home'; b.textContent = '◂ Apteka 360';
+      b.setAttribute('style', 'position:fixed;left:12px;bottom:12px;z-index:2147483646;height:32px;padding:0 14px;border-radius:4px;border:1px solid rgba(0,0,0,.16);background:#0f7b6c;color:#fff;font:600 13px Segoe UI,system-ui,sans-serif;box-shadow:0 4px 12px rgba(0,0,0,.2)');
+      b.onclick = function () { invoke('shell_home'); }; document.body.appendChild(b);
+    };
+    document.addEventListener('DOMContentLoaded', addBack); setInterval(addBack, 2000);
+  }
 
   // --- 3) Tarmoq holati → qobiq ---------------------------------------------------------------
   window.addEventListener('offline', function () { invoke('report_network', { online: false }); });
