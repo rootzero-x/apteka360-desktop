@@ -1,6 +1,6 @@
 [package]
 name = "apteka360-desktop"
-version = "0.1.0"
+version = "0.1.1"
 description = "Apteka 360 — dorixona tarmog'i boshqaruv tizimi (desktop ilova)"
 authors = ["Apteka 360"]
 license = "UNLICENSED"

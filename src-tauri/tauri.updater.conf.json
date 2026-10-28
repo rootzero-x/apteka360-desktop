@@ -3,6 +3,7 @@
   "plugins": {
     "updater": {
       "endpoints": [
+        "https://app.apteka360.uz/desktop/latest.json",
         "https://apteka.agrom24.uz/desktop/latest.json"
       ],
       "pubkey": "PASTE_PUBLIC_KEY_HERE",

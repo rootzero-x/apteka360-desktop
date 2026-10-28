@@ -2,8 +2,8 @@
 
 Apteka 360 dorixona tarmog‘i boshqaruv tizimining **native desktop ilovasi**. [Tauri 2](https://tauri.app) asosida,
 Windows 11 Fluent Design uslubida: o‘z kirish oynasi, navigatsiya paneli, buyruqlar va holat paneli, Windows dialoglari.
-Asosiy ekranlar ilovaning o‘zida chiziladi va ma’lumotni **to‘g‘ridan-to‘g‘ri API’dan** (`https://api-apteka.agrom24.uz`) oladi;
-kam ishlatiladigan bo‘limlar hozircha web paneldan (`https://apteka.agrom24.uz`) ilova ichida ochiladi.
+Asosiy ekranlar ilovaning o‘zida chiziladi va ma’lumotni **to‘g‘ridan-to‘g‘ri API’dan** (`https://api.apteka360.uz`) oladi;
+kam ishlatiladigan bo‘limlar hozircha web paneldan (`https://app.apteka360.uz`) ilova ichida ochiladi.
 
 ## Skrinshotlar (Linux build, Xvfb, lokal dev API bilan)
 
@@ -45,13 +45,13 @@ Kassir (EMPLOYEE) — Profil, Auditor — Audit jurnali. Auditor uchun barcha yo
 │  Filiallar …        │                                                         │
 │ Moliya …            │   webview «panel» — doim yashirin, faqat kirish         │
 │ Bildirishlar (3)    │   sessiyasi (refresh-cookie) uchun                      │
-│ ● Serverga ulangan  api-apteka.agrom24.uz  Yangilandi 19:22   KASSA-PC  v0.1.0  │ ← holat paneli
+│ ● Serverga ulangan  api.apteka360.uz  Yangilandi 19:22   KASSA-PC  v0.1.0  │ ← holat paneli
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 - **Ikki child-webview** (Tauri 2 multiwebview): `shell` — lokal `ui/` (`index.html`, `app.css`, `app.js` — yadro, `screens.js` — ekranlar,
   `vendor/hls.light.min.js`); `panel` — doim yashirin, faqat kirish sessiyasini (httpOnly refresh-cookie) saqlaydi.
-- **Sessiya:** kirish so‘rovlari `panel_api` ko‘prigi orqali panel kontekstida (origin `apteka.agrom24.uz`) bajariladi, shuning uchun
+- **Sessiya:** kirish so‘rovlari `panel_api` ko‘prigi orqali panel kontekstida (origin `app.apteka360.uz`) bajariladi, shuning uchun
   httpOnly refresh-cookie web paneldagidek saqlanadi (keyingi ishga tushishda avtomatik kiradi). Access token panel init-skriptida
   ushlanadi (`report_token`) va Rust xotirasida turadi; native ekranlar API’ga Rust (`api` buyrug‘i, reqwest) orqali murojaat qiladi —
   har so‘rovda `Authorization`, `X-Client: desktop/<versiya>`, `X-Client-Device: <kompyuter> - Desktop ilova`, buyruqlarda `Idempotency-Key`.
@@ -105,7 +105,7 @@ apteka360-desktop/
 │  ├─ Cargo.toml                 # Rust bog‘liqliklari; `updater` feature
 │  ├─ tauri.conf.json            # bundle (nsis, msi, deb, rpm, appimage), ikonkalar
 │  ├─ tauri.updater.conf.json    # avto-yangilanish konfiguratsiyasi (--config bilan ulanadi)
-│  ├─ capabilities/              # shell.json (lokal qobiq), remote.json (apteka.agrom24.uz)
+│  ├─ capabilities/              # shell.json (lokal qobiq), remote.json (app.apteka360.uz, eski *.agrom24.uz ham)
 │  └─ src/{main.rs,lib.rs,inject.js}
 ├─ docs/test/                    # sinov: fake-panel.py (web panel taqlidi), no-hsts-proxy.py, media-test.html
 ├─ docker/                       # Linux’da Docker orqali build (sudo kerak emas)
@@ -168,7 +168,7 @@ cargo tauri build            # src-tauri\target\release\bundle\nsis\*.exe va msi
 ### Panel / API manzilini o‘zgartirish
 
 Kompilyatsiya vaqtida: `APTEKA_PANEL_URL=https://staging.example.uz APTEKA_API_URL=https://api-staging.example.uz docker/build.sh linux`
-(yoki `cargo tauri build` oldidan shu env). Standart — `https://apteka.agrom24.uz`.
+(yoki `cargo tauri build` oldidan shu env). Standart — `https://app.apteka360.uz`.
 
 ## O‘rnatish (Windows)
 
@@ -190,7 +190,7 @@ Yoqish tartibi:
    cargo tauri signer generate -w /home/builder/apteka360.key      # ~/.cache/home/apteka360.key va .pub
    ```
 2. `src-tauri/tauri.updater.conf.json` dagi `"pubkey": "PASTE_PUBLIC_KEY_HERE"` o‘rniga `.pub` fayl mazmunini qo‘ying
-   (ochiq kalit — repoga yozsa bo‘ladi). `endpoints` — `latest.json` manzili (standart: `https://apteka.agrom24.uz/desktop/latest.json`;
+   (ochiq kalit — repoga yozsa bo‘ladi). `endpoints` — `latest.json` manzili (standart: `https://app.apteka360.uz/desktop/latest.json`;
    GitHub Releases ishlatilsa `https://github.com/<org>/<repo>/releases/latest/download/latest.json`).
 3. Build:
    ```bash
@@ -218,7 +218,7 @@ Web panelning kamera ekranida «Ovoz» (HLS oqimdagi audio) va «Gapirish» (pus
 two-way audio) tugmalari bor. Desktop qobiqda buning uchun:
 
 - `WebviewWindowBuilder::on_permission_request` — `Microphone`, `Camera`, `Autoplay` so‘rovlari **faqat** panel domeni
-  (`APTEKA_PANEL_URL` hosti yoki `*.agrom24.uz`) uchun avtomatik ruxsat etiladi; boshqa sahifalar uchun platforma standarti
+  (`APTEKA_PANEL_URL` hosti yoki `*.apteka360.uz` / eski `*.agrom24.uz`) uchun avtomatik ruxsat etiladi; boshqa sahifalar uchun platforma standarti
   (Windows — WebView2 dialogi, Linux — rad). Windows WebView2 va Linux WebKitGTK ikkalasida ishlaydi (Tauri 2.12).
 - Autoplay: wry standart holatda WebView2 ga `--autoplay-policy=no-user-gesture-required`, WebKitGTK ga `AutoplayPolicy::Allow` beradi;
   panel baribir tugma bosilgandan keyin ovoz yoqadi.

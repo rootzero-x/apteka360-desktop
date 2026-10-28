@@ -17,7 +17,8 @@ if ! docker info >/dev/null 2>&1; then DOCKER="sg docker -c"; fi
 run_docker() { if [ "$DOCKER" = "docker" ]; then docker "$@"; else sg docker -c "docker $(printf '%q ' "$@")"; fi; }
 
 in_container() {
-  run_docker run --rm -t \
+  # DOCKER_DNS=8.8.8.8 — router DNS konteyner ichida ishlamasa
+  run_docker run --rm -t ${DOCKER_DNS:+--dns "$DOCKER_DNS"} \
     --user "$(id -u):$(id -g)" \
     -v "$HERE:/work" \
     -v "$CACHE/cargo-registry:/usr/local/cargo/registry" \
@@ -29,8 +30,8 @@ in_container() {
     -e XWIN_CACHE_DIR=/home/builder/.xwin \
     -e APPIMAGE_EXTRACT_AND_RUN=1 \
     -e NO_STRIP=1 \
-    -e APTEKA_PANEL_URL="${APTEKA_PANEL_URL:-https://apteka.agrom24.uz}" \
-    -e APTEKA_API_URL="${APTEKA_API_URL:-https://api-apteka.agrom24.uz}" \
+    -e APTEKA_PANEL_URL="${APTEKA_PANEL_URL:-https://app.apteka360.uz}" \
+    -e APTEKA_API_URL="${APTEKA_API_URL:-https://api.apteka360.uz}" \
     -w /work "$IMAGE" "$@"
 }
 

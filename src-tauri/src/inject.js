@@ -1,4 +1,4 @@
-// Apteka 360 Desktop — qobiq (shell) va panel (https://apteka.agrom24.uz) webview'lariga kiritiladigan skript.
+// Apteka 360 Desktop — qobiq (shell) va panel (https://app.apteka360.uz) webview'lariga kiritiladigan skript.
 // Placeholder'lar Rust tomonida almashtiriladi.
 (function () {
   if (window.__APTEKA_DESKTOP__) return;
@@ -27,7 +27,7 @@
 
   // --- 1) API so'rovlariga X-Client / X-Client-Device qo'shish -------------------------------
   function shouldTag(url) {
-    try { var u = new URL(url, location.href); return /(^|\.)agrom24\.uz$/i.test(u.hostname); } catch (e) { return false; }
+    try { var u = new URL(url, location.href); return /(^|\.)(apteka360|agrom24)\.uz$/i.test(u.hostname); } catch (e) { return false; }
   }
   // --- Token ushlash: native ekranlar qobiqda shu sessiya bilan ishlaydi (refresh-cookie panelda qoladi) ---
   var API_HOST = ''; try { API_HOST = new URL('__API_URL__').host; } catch (e) {}

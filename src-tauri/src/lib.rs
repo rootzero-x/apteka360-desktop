@@ -3,7 +3,7 @@
 //! Arxitektura: bitta `Window` («main») ichida ikkita child-webview:
 //! - `shell`  — lokal `ui/index.html`: Fluent uslubidagi yon panel, buyruqlar paneli, holat paneli,
 //!              offline ekrani. Butun oynani egallaydi (auto_resize).
-//! - `panel`  — https://apteka.agrom24.uz web paneli; qobiq ko'rsatgan «kontent» maydonida joylashadi
+//! - `panel`  — https://app.apteka360.uz web paneli; qobiq ko'rsatgan «kontent» maydonida joylashadi
 //!              (`set_panel_bounds`). Unga init-skript (inject.js) kiritiladi: X-Client sarlavhalari,
 //!              tugmalar, panelning o'z yon panelini yashirish (compact rejim), tarmoq holati.
 //! Rust: ulanish tekshiruvi, tray, bitta nusxa, oyna holati, avtostart, native dialoglar,
@@ -27,13 +27,13 @@ use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 /// Web panel manzili. Kompilyatsiya vaqtida `APTEKA_PANEL_URL` orqali o'zgartirish mumkin.
 pub const PANEL_URL: &str = match option_env!("APTEKA_PANEL_URL") {
     Some(u) => u,
-    None => "https://apteka.agrom24.uz",
+    None => "https://app.apteka360.uz",
 };
 
 /// API manzili (qobiqdagi native login shu yerga murojaat qiladi — panel webview konteksti orqali).
 pub const API_URL: &str = match option_env!("APTEKA_API_URL") {
     Some(u) => u,
-    None => "https://api-apteka.agrom24.uz",
+    None => "https://api.apteka360.uz",
 };
 
 const WINDOW: &str = "main";
@@ -113,11 +113,17 @@ fn client_info(app: &AppHandle) -> ClientInfo {
     }
 }
 
+/// Rasmiy domenlar: yangi `*.apteka360.uz` va eski `*.agrom24.uz` (eski o'rnatmalar/havolalar uchun).
+fn is_known_domain(host: &str) -> bool {
+    let h = host.to_ascii_lowercase();
+    h.ends_with(".apteka360.uz") || h.ends_with(".agrom24.uz")
+}
+
 /// URL panel domeniga (yoki APTEKA_PANEL_URL hostiga) tegishlimi.
 fn is_panel_origin(url: &Url) -> bool {
     let panel_host = Url::parse(PANEL_URL).ok().and_then(|u| u.host_str().map(str::to_owned));
     match (url.host_str(), panel_host) {
-        (Some(h), Some(p)) => h.eq_ignore_ascii_case(&p) || h.to_ascii_lowercase().ends_with(".agrom24.uz"),
+        (Some(h), Some(p)) => h.eq_ignore_ascii_case(&p) || is_known_domain(h),
         _ => false,
     }
 }
@@ -302,7 +308,7 @@ fn handle_menu(app: &AppHandle, id: &str) {
     }
 }
 
-/// Native login: API so'rovi **panel webview konteksti** (apteka.agrom24.uz origin) orqali bajariladi —
+/// Native login: API so'rovi **panel webview konteksti** (app.apteka360.uz origin) orqali bajariladi —
 /// shunda httpOnly refresh-cookie web paneldagi kabi o'rnatiladi va panel sessiyani o'zi tiklaydi.
 /// Natija `api_result` buyrug'i orqali qaytib, qobiqqa `api` hodisasi sifatida yetkaziladi.
 #[tauri::command]
@@ -562,7 +568,7 @@ pub fn run() {
             // APTEKA_PANEL_URL boshqa domen bo'lsa (staging / lokal sinov) — o'sha origin'ga ham panel ruxsatlarini beramiz
             if let Ok(u) = Url::parse(PANEL_URL) {
                 let host = u.host_str().unwrap_or_default().to_ascii_lowercase();
-                if !host.ends_with("agrom24.uz") {
+                if !is_known_domain(&host) {
                     let origin = u.origin().ascii_serialization();
                     let mut cap = tauri::ipc::CapabilityBuilder::new("remote-panel-custom")
                         .remote(format!("{origin}/*"))

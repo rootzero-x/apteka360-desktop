@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "remote-panel",
-  "description": "https://apteka.agrom24.uz paneliga (child-webview «panel») beriladigan minimal ruxsatlar",
+  "description": "https://app.apteka360.uz paneliga (child-webview «panel») beriladigan minimal ruxsatlar",
   "windows": [
     "main"
   ],
@@ -10,6 +10,8 @@
   ],
   "remote": {
     "urls": [
+      "https://app.apteka360.uz/*",
+      "https://*.apteka360.uz/*",
       "https://apteka.agrom24.uz/*",
       "https://*.agrom24.uz/*"
     ]
